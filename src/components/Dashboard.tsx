@@ -20,143 +20,166 @@ import {
   Eye,
   Headphones,
   PenTool,
-  MessageSquare
+  MessageSquare,
+  Plus
 } from 'lucide-react';
 import InteractiveStudySession from './InteractiveStudySession';
-import { aiEngine, UserProfile, StudyPlan } from '../utils/aiEngine';
+import StudyPlanGenerator from './StudyPlanGenerator';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
+import { StudyPlan } from '../utils/aiEngine';
 
 interface DashboardProps {
-  userData: any;
   setShowTimer: (show: boolean) => void;
-  setUserData: (data: any) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ userData, setShowTimer, setUserData }) => {
+const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
+  const { profile, updateProfile } = useAuth();
   const [activeTask, setActiveTask] = useState<any>(null);
   const [showStudySession, setShowStudySession] = useState(false);
-  const [aiStudyPlan, setAiStudyPlan] = useState<StudyPlan | null>(null);
-  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
-  const [showPlanDetails, setShowPlanDetails] = useState(false);
-  const [planGenerationStep, setPlanGenerationStep] = useState(0);
+  const [showPlanGenerator, setShowPlanGenerator] = useState(false);
+  const [currentStudyPlan, setCurrentStudyPlan] = useState<StudyPlan | null>(null);
+  const [studyTasks, setStudyTasks] = useState<any[]>([]);
+  const [dailyProgress, setDailyProgress] = useState({
+    studyTime: 0,
+    lessonsCompleted: 0,
+    starsEarned: 0,
+    targetStudyTime: 180, // 3 hours
+    targetLessons: 4
+  });
 
-  const studyTasks = [
-    {
-      id: 1,
-      type: 'Adaptive Practice',
-      subject: 'Mathematics',
-      topic: 'Integration by Parts',
-      difficulty: 'Advanced',
-      duration: 45,
-      stars: 15,
-      description: 'Master advanced integration techniques with step-by-step guidance',
-      aiRecommended: true,
-      learningStyle: 'visual',
-      prerequisites: ['Basic Integration', 'Product Rule']
-    },
-    {
-      id: 2,
-      type: 'Interactive Simulation',
-      subject: 'Physics',
-      topic: 'Quantum Mechanics',
-      difficulty: 'Expert',
-      duration: 60,
-      stars: 25,
-      description: 'Explore wave functions and quantum tunneling through interactive simulations',
-      aiRecommended: true,
-      learningStyle: 'kinesthetic',
-      prerequisites: ['Wave Physics', 'Linear Algebra']
-    },
-    {
-      id: 3,
-      type: 'Visual Learning + 3D Modeling',
-      subject: 'Chemistry',
-      topic: 'Organic Stereochemistry',
-      difficulty: 'Intermediate',
-      duration: 40,
-      stars: 18,
-      description: 'Build and analyze 3D molecular structures to understand stereochemistry',
-      aiRecommended: false,
-      learningStyle: 'visual',
-      prerequisites: ['Basic Organic Chemistry']
+  useEffect(() => {
+    if (profile) {
+      fetchActiveStudyPlan();
+      fetchDailyProgress();
     }
-  ];
+  }, [profile]);
 
-  const quickActions = [
-    { 
-      icon: Brain, 
-      label: 'AI Study Plan', 
-      color: 'from-purple-500 to-pink-500',
-      action: () => generateAIStudyPlan(),
-      description: 'Get a personalized study plan powered by AI'
-    },
-    { 
-      icon: Target, 
-      label: 'Focus Areas', 
-      color: 'from-blue-500 to-cyan-500',
-      action: () => console.log('Focus Areas'),
-      description: 'Work on your identified weak areas'
-    },
-    { 
-      icon: Zap, 
-      label: 'Quick Review', 
-      color: 'from-green-500 to-emerald-500',
-      action: () => console.log('Quick Review'),
-      description: 'Review recent topics and concepts'
-    },
-    { 
-      icon: Award, 
-      label: 'Challenges', 
-      color: 'from-orange-500 to-red-500',
-      action: () => console.log('Challenges'),
-      description: 'Take on advanced problem sets'
+  useEffect(() => {
+    if (currentStudyPlan) {
+      generateAIRecommendedTasks();
     }
-  ];
+  }, [currentStudyPlan]);
 
-  const generateAIStudyPlan = async () => {
-    setIsGeneratingPlan(true);
-    setPlanGenerationStep(0);
-    
-    // Simulate AI processing steps
-    const steps = [
-      'Analyzing your learning profile...',
-      'Identifying knowledge gaps...',
-      'Selecting optimal topics...',
-      'Creating adaptive milestones...',
-      'Personalizing recommendations...',
-      'Finalizing your study plan...'
-    ];
+  const fetchActiveStudyPlan = async () => {
+    if (!profile) return;
 
-    for (let i = 0; i < steps.length; i++) {
-      setPlanGenerationStep(i);
-      await new Promise(resolve => setTimeout(resolve, 800));
-    }
+    try {
+      const { data, error } = await supabase
+        .from('study_plans')
+        .select('*')
+        .eq('user_id', profile.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-    // Convert userData to UserProfile format
-    const userProfile: UserProfile = {
-      name: userData.name,
-      level: userData.level,
-      totalStars: userData.totalStars,
-      currentStreak: userData.currentStreak,
-      studyTime: userData.studyTime,
-      completedLessons: userData.completedLessons,
-      weakAreas: userData.weakAreas,
-      strongAreas: userData.strongAreas,
-      learningStyle: 'visual', // Default, could be user-selected
-      preferredDifficulty: 'adaptive',
-      studyGoals: ['Improve weak areas', 'Maintain strong areas'],
-      timeAvailable: 90, // 1.5 hours per day
-      recentPerformance: {
-        accuracy: 75,
-        speed: 1.2,
-        consistency: 80,
-        engagement: 85
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching study plan:', error);
+        return;
       }
-    };
 
-    const plan = aiEngine.generateStudyPlan(userProfile, ['Master Calculus', 'Understand Quantum Physics']);
-    setAiStudyPlan(plan);
-    setIsGeneratingPlan(false);
-    setShowPlanDetails(true);
+      if (data) {
+        setCurrentStudyPlan({
+          id: data.id,
+          title: data.title,
+          description: data.description,
+          duration: data.duration,
+          dailyTimeCommitment: data.daily_time_commitment,
+          difficulty: data.difficulty,
+          subjects: data.subjects,
+          milestones: data.milestones,
+          adaptiveFeatures: data.adaptive_features,
+          personalizedRecommendations: data.personalized_recommendations,
+          estimatedOutcome: data.estimated_outcome,
+          confidence: data.confidence
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching study plan:', error);
+    }
+  };
+
+  const fetchDailyProgress = async () => {
+    if (!profile) return;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    try {
+      const { data, error } = await supabase
+        .from('daily_progress')
+        .select('*')
+        .eq('user_id', profile.id)
+        .eq('date', today)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching daily progress:', error);
+        return;
+      }
+
+      if (data) {
+        setDailyProgress(prev => ({
+          ...prev,
+          studyTime: data.study_time,
+          lessonsCompleted: data.lessons_completed,
+          starsEarned: data.stars_earned
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching daily progress:', error);
+    }
+  };
+
+  const generateAIRecommendedTasks = () => {
+    if (!currentStudyPlan || !profile) return;
+
+    const tasks = [];
+    
+    // Generate tasks based on study plan subjects
+    currentStudyPlan.subjects.forEach((subject, index) => {
+      subject.topics.forEach((topic, topicIndex) => {
+        if (tasks.length < 6) { // Limit to 6 tasks
+          tasks.push({
+            id: `${index}-${topicIndex}`,
+            type: getTaskType(subject.name, topic.difficulty),
+            subject: subject.name,
+            topic: topic.name,
+            difficulty: topic.difficulty,
+            duration: topic.estimatedTime,
+            stars: calculateStars(topic.difficulty),
+            description: `Master ${topic.name} with ${getTaskType(subject.name, topic.difficulty).toLowerCase()}`,
+            aiRecommended: subject.priority === 'high',
+            learningStyle: profile.learning_style || 'visual',
+            prerequisites: topic.prerequisites || []
+          });
+        }
+      });
+    });
+
+    setStudyTasks(tasks);
+  };
+
+  const getTaskType = (subject: string, difficulty: string) => {
+    const types = {
+      'Mathematics': ['Adaptive Practice', 'Problem Solving', 'Concept Mastery'],
+      'Physics': ['Interactive Simulation', 'Lab Experiment', 'Theory Application'],
+      'Chemistry': ['Visual Learning + 3D Modeling', 'Reaction Mechanisms', 'Lab Practice'],
+      'default': ['Adaptive Practice', 'Interactive Learning', 'Concept Review']
+    };
+    
+    const subjectTypes = types[subject as keyof typeof types] || types.default;
+    return subjectTypes[Math.floor(Math.random() * subjectTypes.length)];
+  };
+
+  const calculateStars = (difficulty: string) => {
+    const starMap = {
+      'Beginner': 8,
+      'Intermediate': 12,
+      'Advanced': 18,
+      'Expert': 25
+    };
+    return starMap[difficulty as keyof typeof starMap] || 10;
   };
 
   const handleTaskStart = (task: any) => {
@@ -164,36 +187,182 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setShowTimer, setUserDa
     setShowStudySession(true);
   };
 
-  const handleSessionComplete = (earnedStars: number, performance: any) => {
-    setUserData({
-      ...userData,
-      totalStars: userData.totalStars + earnedStars,
-      completedLessons: userData.completedLessons + 1,
-      studyTime: userData.studyTime + (activeTask?.duration || 30)
-    });
+  const handleSessionComplete = async (earnedStars: number, performance: any) => {
+    if (!profile || !activeTask) return;
+
+    try {
+      // Update user profile
+      const newTotalStars = profile.total_stars + earnedStars;
+      const newCompletedLessons = profile.completed_lessons + 1;
+      const newStudyTime = profile.study_time + activeTask.duration;
+      const newLevel = Math.floor(newTotalStars / 100) + 1; // Level up every 100 stars
+
+      await updateProfile({
+        total_stars: newTotalStars,
+        completed_lessons: newCompletedLessons,
+        study_time: newStudyTime,
+        level: Math.max(profile.level, newLevel)
+      });
+
+      // Record study session
+      await supabase.from('study_sessions').insert({
+        user_id: profile.id,
+        subject: activeTask.subject,
+        topic: activeTask.topic,
+        duration: activeTask.duration,
+        stars_earned: earnedStars,
+        accuracy: performance.accuracy,
+        session_data: performance
+      });
+
+      // Update daily progress
+      const today = new Date().toISOString().split('T')[0];
+      const { data: existingProgress } = await supabase
+        .from('daily_progress')
+        .select('*')
+        .eq('user_id', profile.id)
+        .eq('date', today)
+        .single();
+
+      if (existingProgress) {
+        await supabase
+          .from('daily_progress')
+          .update({
+            study_time: existingProgress.study_time + activeTask.duration,
+            lessons_completed: existingProgress.lessons_completed + 1,
+            stars_earned: existingProgress.stars_earned + earnedStars,
+            subjects_studied: Array.from(new Set([...existingProgress.subjects_studied, activeTask.subject]))
+          })
+          .eq('id', existingProgress.id);
+      } else {
+        await supabase.from('daily_progress').insert({
+          user_id: profile.id,
+          date: today,
+          study_time: activeTask.duration,
+          lessons_completed: 1,
+          stars_earned: earnedStars,
+          subjects_studied: [activeTask.subject]
+        });
+      }
+
+      // Refresh daily progress
+      fetchDailyProgress();
+      
+    } catch (error) {
+      console.error('Error completing session:', error);
+    }
+
     setShowStudySession(false);
     setActiveTask(null);
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Beginner': return 'text-green-400 bg-green-500/10';
-      case 'Intermediate': return 'text-yellow-400 bg-yellow-500/10';
-      case 'Advanced': return 'text-orange-400 bg-orange-500/10';
-      case 'Expert': return 'text-red-400 bg-red-500/10';
-      default: return 'text-gray-400 bg-gray-500/10';
+  const quickActions = [
+    { 
+      icon: Brain, 
+      label: 'AI Study Plan', 
+      color: 'from-purple-500 to-pink-500',
+      action: () => setShowPlanGenerator(true),
+      description: currentStudyPlan ? 'Update your study plan' : 'Get a personalized study plan powered by AI'
+    },
+    { 
+      icon: Target, 
+      label: 'Focus Areas', 
+      color: 'from-blue-500 to-cyan-500',
+      action: () => handleFocusAreas(),
+      description: 'Work on your identified weak areas',
+      disabled: !currentStudyPlan
+    },
+    { 
+      icon: Zap, 
+      label: 'Quick Review', 
+      color: 'from-green-500 to-emerald-500',
+      action: () => handleQuickReview(),
+      description: 'Review recent topics and concepts',
+      disabled: !currentStudyPlan
+    },
+    { 
+      icon: Award, 
+      label: 'Challenges', 
+      color: 'from-orange-500 to-red-500',
+      action: () => handleChallenges(),
+      description: 'Take on advanced problem sets',
+      disabled: !currentStudyPlan
+    }
+  ];
+
+  const handleFocusAreas = () => {
+    if (!currentStudyPlan) return;
+    
+    // Find high priority subjects (weak areas)
+    const focusSubjects = currentStudyPlan.subjects.filter(s => s.priority === 'high');
+    if (focusSubjects.length > 0) {
+      const focusTask = {
+        id: 'focus-task',
+        type: 'Focus Session',
+        subject: focusSubjects[0].name,
+        topic: focusSubjects[0].topics[0]?.name || 'Foundation Review',
+        difficulty: 'Adaptive',
+        duration: 45,
+        stars: 20,
+        description: `Targeted practice for your weak area: ${focusSubjects[0].name}`,
+        aiRecommended: true,
+        learningStyle: profile?.learning_style || 'visual',
+        prerequisites: []
+      };
+      handleTaskStart(focusTask);
     }
   };
 
-  const getLearningStyleIcon = (style: string) => {
-    switch (style) {
-      case 'visual': return Eye;
-      case 'auditory': return Headphones;
-      case 'kinesthetic': return PenTool;
-      case 'reading': return BookOpen;
-      default: return Eye;
+  const handleQuickReview = () => {
+    if (!currentStudyPlan) return;
+    
+    const reviewTask = {
+      id: 'review-task',
+      type: 'Quick Review',
+      subject: 'Mixed Review',
+      topic: 'Recent Concepts',
+      difficulty: 'Intermediate',
+      duration: 20,
+      stars: 10,
+      description: 'Quick review of recently studied concepts',
+      aiRecommended: true,
+      learningStyle: profile?.learning_style || 'visual',
+      prerequisites: []
+    };
+    handleTaskStart(reviewTask);
+  };
+
+  const handleChallenges = () => {
+    if (!currentStudyPlan) return;
+    
+    // Find advanced topics
+    const challengeSubjects = currentStudyPlan.subjects.filter(s => 
+      s.topics.some(t => t.difficulty === 'Advanced' || t.difficulty === 'Expert')
+    );
+    
+    if (challengeSubjects.length > 0) {
+      const advancedTopic = challengeSubjects[0].topics.find(t => 
+        t.difficulty === 'Advanced' || t.difficulty === 'Expert'
+      );
+      
+      const challengeTask = {
+        id: 'challenge-task',
+        type: 'Challenge Mode',
+        subject: challengeSubjects[0].name,
+        topic: advancedTopic?.name || 'Advanced Problems',
+        difficulty: 'Expert',
+        duration: 60,
+        stars: 30,
+        description: `Challenge yourself with advanced ${challengeSubjects[0].name} problems`,
+        aiRecommended: true,
+        learningStyle: profile?.learning_style || 'visual',
+        prerequisites: advancedTopic?.prerequisites || []
+      };
+      handleTaskStart(challengeTask);
     }
   };
+
+  if (!profile) return null;
 
   return (
     <div className="p-6 space-y-6">
@@ -202,14 +371,17 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setShowTimer, setUserDa
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-white mb-2">
-              Welcome back, {userData.name}! 🚀
+              Welcome back, {profile.name}! 🚀
             </h2>
             <p className="text-gray-300">
-              Ready to continue your learning journey? Your AI tutor has prepared personalized recommendations.
+              {currentStudyPlan 
+                ? `Continue with your "${currentStudyPlan.title}" study plan`
+                : 'Ready to create your personalized AI study plan?'
+              }
             </p>
           </div>
           <div className="text-right">
-            <div className="text-3xl font-bold text-purple-400">{userData.level}</div>
+            <div className="text-3xl font-bold text-purple-400">{profile.level}</div>
             <div className="text-gray-400 text-sm">Current Level</div>
           </div>
         </div>
@@ -223,255 +395,41 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setShowTimer, setUserDa
             <button
               key={index}
               onClick={action.action}
-              className="group bg-slate-800/60 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50 hover:border-purple-500/50 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/10"
+              disabled={action.disabled}
+              className={`group bg-slate-800/60 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50 hover:border-purple-500/50 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/10 ${
+                action.disabled ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
               <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                 <Icon className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-white font-semibold mb-2">{action.label}</h3>
               <p className="text-gray-400 text-sm">{action.description}</p>
+              {action.disabled && (
+                <p className="text-yellow-400 text-xs mt-2">Create a study plan first</p>
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* AI Study Plan Generation Modal */}
-      {isGeneratingPlan && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-slate-800/95 backdrop-blur-sm rounded-xl border border-slate-700/50 p-8 max-w-md w-full mx-4">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Brain className="w-8 h-8 text-white animate-pulse" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-4">AI Study Plan Generator</h3>
-              <div className="space-y-4">
-                {[
-                  'Analyzing your learning profile...',
-                  'Identifying knowledge gaps...',
-                  'Selecting optimal topics...',
-                  'Creating adaptive milestones...',
-                  'Personalizing recommendations...',
-                  'Finalizing your study plan...'
-                ].map((step, index) => (
-                  <div key={index} className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-300 ${
-                    index <= planGenerationStep 
-                      ? 'bg-purple-500/20 text-purple-300' 
-                      : 'bg-slate-700/30 text-gray-500'
-                  }`}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                      index < planGenerationStep 
-                        ? 'bg-green-500 text-white' 
-                        : index === planGenerationStep 
-                          ? 'bg-purple-500 text-white animate-spin' 
-                          : 'bg-gray-600 text-gray-400'
-                    }`}>
-                      {index < planGenerationStep ? '✓' : index === planGenerationStep ? '⟳' : index + 1}
-                    </div>
-                    <span className="text-sm">{step}</span>
-                  </div>
-                ))}
-              </div>
+      {/* AI-Recommended Study Sessions */}
+      {studyTasks.length > 0 && (
+        <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-700/50">
+          <div className="p-6 border-b border-slate-700/50">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-white flex items-center space-x-2">
+                <Sparkles className="w-5 h-5 text-purple-400" />
+                <span>AI-Recommended Study Sessions</span>
+              </h3>
+              <span className="text-sm text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full">
+                Personalized for you
+              </span>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* AI Study Plan Details Modal */}
-      {showPlanDetails && aiStudyPlan && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800/95 backdrop-blur-sm rounded-xl border border-slate-700/50 max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            {/* Header */}
-            <div className="p-6 border-b border-slate-700/50 bg-gradient-to-r from-purple-600/10 to-pink-600/10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-2">{aiStudyPlan.title}</h2>
-                  <p className="text-gray-300">{aiStudyPlan.description}</p>
-                </div>
-                <button
-                  onClick={() => setShowPlanDetails(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              {/* Plan Overview */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                <div className="bg-slate-700/30 rounded-lg p-3">
-                  <div className="text-purple-400 text-sm">Duration</div>
-                  <div className="text-white font-bold">{aiStudyPlan.duration} days</div>
-                </div>
-                <div className="bg-slate-700/30 rounded-lg p-3">
-                  <div className="text-blue-400 text-sm">Daily Time</div>
-                  <div className="text-white font-bold">{aiStudyPlan.dailyTimeCommitment} min</div>
-                </div>
-                <div className="bg-slate-700/30 rounded-lg p-3">
-                  <div className="text-green-400 text-sm">Difficulty</div>
-                  <div className="text-white font-bold">{aiStudyPlan.difficulty}</div>
-                </div>
-                <div className="bg-slate-700/30 rounded-lg p-3">
-                  <div className="text-yellow-400 text-sm">Confidence</div>
-                  <div className="text-white font-bold">{aiStudyPlan.confidence}%</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
-              {/* Subjects */}
-              <div>
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
-                  <BookOpen className="w-5 h-5" />
-                  <span>Study Subjects</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {aiStudyPlan.subjects.map((subject, index) => (
-                    <div key={index} className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/50">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-white font-semibold">{subject.name}</h4>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          subject.priority === 'high' ? 'bg-red-500/20 text-red-300' :
-                          subject.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
-                          'bg-green-500/20 text-green-300'
-                        }`}>
-                          {subject.priority} priority
-                        </span>
-                      </div>
-                      <p className="text-gray-400 text-sm mb-3">{subject.reasoning}</p>
-                      <div className="space-y-2">
-                        <div className="text-sm text-gray-300">
-                          <strong>Topics:</strong> {subject.topics.map(t => t.name).join(', ')}
-                        </div>
-                        <div className="text-sm text-purple-400">
-                          <strong>Time Allocation:</strong> {subject.timeAllocation}%
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Milestones */}
-              <div>
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
-                  <Target className="w-5 h-5" />
-                  <span>Learning Milestones</span>
-                </h3>
-                <div className="space-y-3">
-                  {aiStudyPlan.milestones.slice(0, 4).map((milestone, index) => (
-                    <div key={index} className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/50">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-white font-semibold">Week {milestone.week}: {milestone.title}</h4>
-                        <div className="flex items-center space-x-1 text-yellow-400">
-                          <Star className="w-4 h-4" />
-                          <span className="text-sm">{milestone.rewards.join(', ')}</span>
-                        </div>
-                      </div>
-                      <p className="text-gray-400 text-sm mb-2">{milestone.description}</p>
-                      <div className="text-sm text-green-400">
-                        <strong>Success Criteria:</strong> {milestone.successCriteria.join(', ')}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Adaptive Features */}
-              <div>
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
-                  <Brain className="w-5 h-5" />
-                  <span>AI Adaptive Features</span>
-                </h3>
-                <div className="space-y-3">
-                  {aiStudyPlan.adaptiveFeatures.map((feature, index) => (
-                    <div key={index} className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/50">
-                      <div className="flex items-start space-x-3">
-                        <Zap className="w-5 h-5 text-purple-400 mt-0.5" />
-                        <div>
-                          <div className="text-white font-medium">{feature.trigger}</div>
-                          <div className="text-purple-400 text-sm">{feature.action}</div>
-                          <div className="text-gray-400 text-sm mt-1">{feature.description}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Personalized Recommendations */}
-              <div>
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
-                  <Lightbulb className="w-5 h-5" />
-                  <span>AI Recommendations</span>
-                </h3>
-                <div className="space-y-2">
-                  {aiStudyPlan.personalizedRecommendations.map((rec, index) => (
-                    <div key={index} className="flex items-start space-x-3 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                      <MessageSquare className="w-4 h-4 text-blue-400 mt-0.5" />
-                      <span className="text-blue-300 text-sm">{rec}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Expected Outcome */}
-              <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 rounded-lg p-4 border border-green-500/20">
-                <h3 className="text-lg font-bold text-white mb-2 flex items-center space-x-2">
-                  <Rocket className="w-5 h-5 text-green-400" />
-                  <span>Expected Outcome</span>
-                </h3>
-                <p className="text-green-300">{aiStudyPlan.estimatedOutcome}</p>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-6 border-t border-slate-700/50 bg-slate-800/50">
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-400">
-                  Generated with {aiStudyPlan.confidence}% confidence • Personalized for your learning style
-                </div>
-                <div className="space-x-3">
-                  <button
-                    onClick={() => setShowPlanDetails(false)}
-                    className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
-                  >
-                    Close
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowPlanDetails(false);
-                      // Here you would implement plan activation
-                      console.log('Activating AI study plan:', aiStudyPlan);
-                    }}
-                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-colors"
-                  >
-                    Start This Plan
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Recommended Study Tasks */}
-      <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-700/50">
-        <div className="p-6 border-b border-slate-700/50">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white flex items-center space-x-2">
-              <Sparkles className="w-5 h-5 text-purple-400" />
-              <span>AI-Recommended Study Sessions</span>
-            </h3>
-            <span className="text-sm text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full">
-              Personalized for you
-            </span>
-          </div>
-        </div>
-        
-        <div className="p-6 space-y-4">
-          {studyTasks.map((task) => {
-            const LearningIcon = getLearningStyleIcon(task.learningStyle);
-            return (
+          
+          <div className="p-6 space-y-4">
+            {studyTasks.map((task) => (
               <div
                 key={task.id}
                 className="group bg-slate-700/30 rounded-lg p-6 border border-slate-600/50 hover:border-purple-500/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-500/10"
@@ -489,7 +447,12 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setShowTimer, setUserDa
                           <span>AI Pick</span>
                         </span>
                       )}
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getDifficultyColor(task.difficulty)}`}>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        task.difficulty === 'Beginner' ? 'text-green-400 bg-green-500/10' :
+                        task.difficulty === 'Intermediate' ? 'text-yellow-400 bg-yellow-500/10' :
+                        task.difficulty === 'Advanced' ? 'text-orange-400 bg-orange-500/10' :
+                        'text-red-400 bg-red-500/10'
+                      }`}>
                         {task.difficulty}
                       </span>
                     </div>
@@ -506,24 +469,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setShowTimer, setUserDa
                         <Star className="w-4 h-4 text-yellow-400" />
                         <span>{task.stars} stars</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <LearningIcon className="w-4 h-4 text-blue-400" />
-                        <span>{task.learningStyle} learning</span>
-                      </div>
                     </div>
-                    
-                    {task.prerequisites.length > 0 && (
-                      <div className="mt-3 flex items-center space-x-2">
-                        <span className="text-xs text-gray-500">Prerequisites:</span>
-                        <div className="flex flex-wrap gap-1">
-                          {task.prerequisites.map((prereq, index) => (
-                            <span key={index} className="text-xs bg-slate-600/50 text-gray-400 px-2 py-1 rounded">
-                              {prereq}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                   
                   <button
@@ -535,18 +481,9 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setShowTimer, setUserDa
                   </button>
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
-
-      {/* Study Session Modal */}
-      {showStudySession && activeTask && (
-        <InteractiveStudySession
-          task={activeTask}
-          onClose={() => setShowStudySession(false)}
-          onComplete={handleSessionComplete}
-        />
       )}
 
       {/* Today's Progress */}
@@ -559,17 +496,27 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setShowTimer, setUserDa
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-gray-300">Study Time</span>
-              <span className="text-white font-semibold">2.5h / 3h</span>
+              <span className="text-white font-semibold">
+                {Math.floor(dailyProgress.studyTime / 60)}h {dailyProgress.studyTime % 60}m / {Math.floor(dailyProgress.targetStudyTime / 60)}h
+              </span>
             </div>
             <div className="w-full bg-slate-700 rounded-full h-2">
-              <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full" style={{ width: '83%' }} />
+              <div 
+                className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-1000" 
+                style={{ width: `${Math.min((dailyProgress.studyTime / dailyProgress.targetStudyTime) * 100, 100)}%` }} 
+              />
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-300">Lessons</span>
-              <span className="text-white font-semibold">3 / 4</span>
+              <span className="text-white font-semibold">
+                {dailyProgress.lessonsCompleted} / {dailyProgress.targetLessons}
+              </span>
             </div>
             <div className="w-full bg-slate-700 rounded-full h-2">
-              <div className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full" style={{ width: '75%' }} />
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-1000" 
+                style={{ width: `${Math.min((dailyProgress.lessonsCompleted / dailyProgress.targetLessons) * 100, 100)}%` }} 
+              />
             </div>
           </div>
         </div>
@@ -580,14 +527,14 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setShowTimer, setUserDa
             <TrendingUp className="w-5 h-5 text-purple-400" />
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-purple-400 mb-2">{userData.currentStreak}</div>
+            <div className="text-3xl font-bold text-purple-400 mb-2">{profile.current_streak}</div>
             <div className="text-gray-400 text-sm">days in a row</div>
             <div className="mt-4 flex justify-center space-x-1">
               {[...Array(7)].map((_, i) => (
                 <div
                   key={i}
                   className={`w-3 h-3 rounded-full ${
-                    i < userData.currentStreak % 7 ? 'bg-purple-500' : 'bg-slate-600'
+                    i < profile.current_streak % 7 ? 'bg-purple-500' : 'bg-slate-600'
                   }`}
                 />
               ))}
@@ -601,15 +548,41 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setShowTimer, setUserDa
             <Award className="w-5 h-5 text-yellow-400" />
           </div>
           <div className="space-y-3">
-            <div className="text-white font-medium">Level {userData.level + 1}</div>
-            <div className="text-gray-400 text-sm">Complete 5 more lessons</div>
-            <div className="w-full bg-slate-700 rounded-full h-2">
-              <div className="bg-gradient-to-r from-yellow-500 to-orange-500 h-2 rounded-full" style={{ width: '60%' }} />
+            <div className="text-white font-medium">Level {profile.level + 1}</div>
+            <div className="text-gray-400 text-sm">
+              {100 - (profile.total_stars % 100)} more stars needed
             </div>
-            <div className="text-yellow-400 text-sm">3 / 5 lessons</div>
+            <div className="w-full bg-slate-700 rounded-full h-2">
+              <div 
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 h-2 rounded-full transition-all duration-1000" 
+                style={{ width: `${(profile.total_stars % 100)}%` }} 
+              />
+            </div>
+            <div className="text-yellow-400 text-sm">
+              {profile.total_stars % 100} / 100 stars
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      {showPlanGenerator && (
+        <StudyPlanGenerator
+          onClose={() => setShowPlanGenerator(false)}
+          onPlanGenerated={(plan) => {
+            setCurrentStudyPlan(plan);
+            setShowPlanGenerator(false);
+          }}
+        />
+      )}
+
+      {showStudySession && activeTask && (
+        <InteractiveStudySession
+          task={activeTask}
+          onClose={() => setShowStudySession(false)}
+          onComplete={handleSessionComplete}
+        />
+      )}
     </div>
   );
 };

@@ -9,9 +9,7 @@ import {
   Target,
   TrendingUp,
   Award,
-  Play,
-  Pause,
-  RotateCcw
+  LogOut
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import StudySession from './components/StudySession';
@@ -19,20 +17,33 @@ import Progress from './components/Progress';
 import Constellations from './components/Constellations';
 import Profile from './components/Profile';
 import PomodoroTimer from './components/PomodoroTimer';
+import Auth from './components/Auth';
+import { useAuth } from './hooks/useAuth';
 
 function App() {
+  const { user, profile, loading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showTimer, setShowTimer] = useState(false);
-  const [userData, setUserData] = useState({
-    name: 'Alex Johnson',
-    level: 12,
-    totalStars: 247,
-    currentStreak: 15,
-    studyTime: 1840, // minutes
-    completedLessons: 89,
-    weakAreas: ['Calculus', 'Organic Chemistry'],
-    strongAreas: ['Physics', 'Literature']
-  });
+
+  // Show loading screen while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <Star className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Apollo Study</h1>
+          <p className="text-gray-300">Loading your learning journey...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth screen if not authenticated
+  if (!user || !profile) {
+    return <Auth />;
+  }
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -45,17 +56,25 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard userData={userData} setShowTimer={setShowTimer} setUserData={setUserData} />;
+        return <Dashboard setShowTimer={setShowTimer} />;
       case 'study':
-        return <StudySession userData={userData} setUserData={setUserData} />;
+        return <StudySession userData={profile} setUserData={() => {}} />;
       case 'progress':
-        return <Progress userData={userData} />;
+        return <Progress userData={profile} />;
       case 'constellations':
-        return <Constellations userData={userData} />;
+        return <Constellations userData={profile} />;
       case 'profile':
-        return <Profile userData={userData} setUserData={setUserData} />;
+        return <Profile userData={profile} setUserData={() => {}} />;
       default:
-        return <Dashboard userData={userData} setShowTimer={setShowTimer} setUserData={setUserData} />;
+        return <Dashboard setShowTimer={setShowTimer} />;
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
@@ -92,7 +111,11 @@ function App() {
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2 text-sm text-gray-300">
                   <Target className="w-4 h-4" />
-                  <span>{userData.currentStreak} day streak</span>
+                  <span>{profile.current_streak} day streak</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-gray-300">
+                  <Star className="w-4 h-4 text-yellow-400" />
+                  <span>{profile.total_stars} stars</span>
                 </div>
                 <button
                   onClick={() => setShowTimer(!showTimer)}
@@ -100,6 +123,13 @@ function App() {
                 >
                   <Timer className="w-4 h-4" />
                   <span>Focus</span>
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="text-gray-400 hover:text-white transition-colors p-2"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -135,10 +165,18 @@ function App() {
               <div className="mt-8 space-y-4">
                 <div className="bg-slate-700/50 rounded-lg p-4 transform transition-all duration-200 hover:scale-105">
                   <div className="flex items-center justify-between">
+                    <span className="text-gray-300 text-sm">Level</span>
+                    <Award className="w-4 h-4 text-purple-400" />
+                  </div>
+                  <p className="text-2xl font-bold text-white mt-1">{profile.level}</p>
+                </div>
+                
+                <div className="bg-slate-700/50 rounded-lg p-4 transform transition-all duration-200 hover:scale-105">
+                  <div className="flex items-center justify-between">
                     <span className="text-gray-300 text-sm">Stars Collected</span>
                     <Star className="w-4 h-4 text-yellow-400" />
                   </div>
-                  <p className="text-2xl font-bold text-white mt-1">{userData.totalStars}</p>
+                  <p className="text-2xl font-bold text-white mt-1">{profile.total_stars}</p>
                 </div>
                 
                 <div className="bg-slate-700/50 rounded-lg p-4 transform transition-all duration-200 hover:scale-105">
@@ -146,7 +184,7 @@ function App() {
                     <span className="text-gray-300 text-sm">Study Time</span>
                     <Timer className="w-4 h-4 text-blue-400" />
                   </div>
-                  <p className="text-2xl font-bold text-white mt-1">{Math.floor(userData.studyTime / 60)}h</p>
+                  <p className="text-2xl font-bold text-white mt-1">{Math.floor(profile.study_time / 60)}h</p>
                 </div>
               </div>
             </div>
