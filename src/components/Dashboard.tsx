@@ -71,28 +71,28 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
         .eq('user_id', profile.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching study plan:', error);
         return;
       }
 
-      if (data) {
+      if (data && data.length > 0) {
+        const planData = data[0];
         setCurrentStudyPlan({
-          id: data.id,
-          title: data.title,
-          description: data.description,
-          duration: data.duration,
-          dailyTimeCommitment: data.daily_time_commitment,
-          difficulty: data.difficulty,
-          subjects: data.subjects,
-          milestones: data.milestones,
-          adaptiveFeatures: data.adaptive_features,
-          personalizedRecommendations: data.personalized_recommendations,
-          estimatedOutcome: data.estimated_outcome,
-          confidence: data.confidence
+          id: planData.id,
+          title: planData.title,
+          description: planData.description,
+          duration: planData.duration,
+          dailyTimeCommitment: planData.daily_time_commitment,
+          difficulty: planData.difficulty,
+          subjects: planData.subjects,
+          milestones: planData.milestones,
+          adaptiveFeatures: planData.adaptive_features,
+          personalizedRecommendations: planData.personalized_recommendations,
+          estimatedOutcome: planData.estimated_outcome,
+          confidence: planData.confidence
         });
       }
     } catch (error) {
@@ -110,20 +110,20 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
         .from('daily_progress')
         .select('*')
         .eq('user_id', profile.id)
-        .eq('date', today)
-        .single();
+        .eq('date', today);
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching daily progress:', error);
         return;
       }
 
-      if (data) {
+      if (data && data.length > 0) {
+        const progressData = data[0];
         setDailyProgress(prev => ({
           ...prev,
-          studyTime: data.study_time,
-          lessonsCompleted: data.lessons_completed,
-          starsEarned: data.stars_earned
+          studyTime: progressData.study_time,
+          lessonsCompleted: progressData.lessons_completed,
+          starsEarned: progressData.stars_earned
         }));
       }
     } catch (error) {
@@ -221,19 +221,19 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
         .from('daily_progress')
         .select('*')
         .eq('user_id', profile.id)
-        .eq('date', today)
-        .single();
+        .eq('date', today);
 
-      if (existingProgress) {
+      if (existingProgress && existingProgress.length > 0) {
+        const progressData = existingProgress[0];
         await supabase
           .from('daily_progress')
           .update({
-            study_time: existingProgress.study_time + activeTask.duration,
-            lessons_completed: existingProgress.lessons_completed + 1,
-            stars_earned: existingProgress.stars_earned + earnedStars,
-            subjects_studied: Array.from(new Set([...existingProgress.subjects_studied, activeTask.subject]))
+            study_time: progressData.study_time + activeTask.duration,
+            lessons_completed: progressData.lessons_completed + 1,
+            stars_earned: progressData.stars_earned + earnedStars,
+            subjects_studied: Array.from(new Set([...progressData.subjects_studied, activeTask.subject]))
           })
-          .eq('id', existingProgress.id);
+          .eq('id', progressData.id);
       } else {
         await supabase.from('daily_progress').insert({
           user_id: profile.id,
