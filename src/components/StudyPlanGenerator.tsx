@@ -115,7 +115,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
     setError('');
     
     try {
-      console.log('Starting study plan generation...');
+      console.log('🚀 Starting study plan generation...');
       
       // Validate form data
       const validGoals = formData.goals.filter(goal => goal.trim());
@@ -129,7 +129,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
       }
 
       // Process uploaded files
-      console.log('Processing uploaded files...');
+      console.log('📁 Processing uploaded files...');
       const fileContent = await processUploadedFiles();
       
       // Combine all information
@@ -146,7 +146,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
       `.trim();
 
       // Create enhanced user profile
-      console.log('Creating enhanced user profile...');
+      console.log('👤 Creating enhanced user profile...');
       const enhancedProfile = {
         name: profile.name,
         level: profile.level,
@@ -169,12 +169,12 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
       };
 
       // Generate AI study plan
-      console.log('Generating AI study plan...');
+      console.log('🤖 Generating AI study plan...');
       const plan = aiEngine.generateStudyPlan(enhancedProfile, validGoals);
-      console.log('Study plan generated:', plan);
+      console.log('✅ Study plan generated:', plan);
 
       // Deactivate existing active plans
-      console.log('Deactivating existing plans...');
+      console.log('🔄 Deactivating existing plans...');
       await supabase
         .from('study_plans')
         .update({ is_active: false })
@@ -182,7 +182,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
         .eq('is_active', true);
 
       // Save to database
-      console.log('Saving study plan to database...');
+      console.log('💾 Saving study plan to database...');
       const { data, error: insertError } = await supabase
         .from('study_plans')
         .insert({
@@ -204,14 +204,14 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
         .single();
 
       if (insertError) {
-        console.error('Database insert error:', insertError);
+        console.error('❌ Database insert error:', insertError);
         throw new Error(`Failed to save study plan: ${insertError.message}`);
       }
 
-      console.log('Study plan saved successfully:', data);
+      console.log('✅ Study plan saved successfully:', data);
 
       // Update user profile with new preferences
-      console.log('Updating user profile...');
+      console.log('👤 Updating user profile...');
       await updateProfile({
         weak_areas: validWeakAreas,
         strong_areas: validStrongAreas,
@@ -219,11 +219,11 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
         study_goals: validGoals
       });
 
-      console.log('Study plan generation completed successfully');
+      console.log('🎉 Study plan generation completed successfully');
       onPlanGenerated({ ...plan, id: data.id });
       onClose();
     } catch (error: any) {
-      console.error('Error generating study plan:', error);
+      console.error('❌ Error generating study plan:', error);
       setError(error.message || 'Failed to generate study plan. Please try again.');
     } finally {
       setLoading(false);

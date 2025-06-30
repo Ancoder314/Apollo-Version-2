@@ -96,51 +96,88 @@ class AIStudyPlanEngine {
   }
 
   private initializeKnowledgeBase() {
-    // Subject difficulty and prerequisite mapping
+    // Enhanced subject knowledge base with more comprehensive topics
     this.knowledgeBase.set('subjects', {
       'Mathematics': {
         topics: {
-          'Algebra': { difficulty: 0.3, prerequisites: ['Basic Arithmetic'], time: 120 },
-          'Calculus': { difficulty: 0.8, prerequisites: ['Algebra', 'Trigonometry'], time: 180 },
-          'Linear Algebra': { difficulty: 0.7, prerequisites: ['Algebra'], time: 150 },
-          'Statistics': { difficulty: 0.5, prerequisites: ['Algebra'], time: 100 },
-          'Differential Equations': { difficulty: 0.9, prerequisites: ['Calculus'], time: 200 }
+          'Algebra': { difficulty: 0.3, prerequisites: ['Basic Arithmetic'], time: 45, category: 'foundation' },
+          'Calculus': { difficulty: 0.8, prerequisites: ['Algebra', 'Trigonometry'], time: 60, category: 'advanced' },
+          'Linear Algebra': { difficulty: 0.7, prerequisites: ['Algebra'], time: 50, category: 'advanced' },
+          'Statistics': { difficulty: 0.5, prerequisites: ['Algebra'], time: 40, category: 'intermediate' },
+          'Differential Equations': { difficulty: 0.9, prerequisites: ['Calculus'], time: 70, category: 'expert' },
+          'Geometry': { difficulty: 0.4, prerequisites: ['Basic Math'], time: 35, category: 'foundation' },
+          'Trigonometry': { difficulty: 0.6, prerequisites: ['Algebra'], time: 45, category: 'intermediate' }
         },
         learningStyles: {
-          visual: ['graphs', 'diagrams', 'geometric_visualization'],
-          auditory: ['verbal_explanations', 'discussion_groups'],
-          kinesthetic: ['hands_on_problems', 'manipulatives'],
-          reading: ['textbook_study', 'written_proofs']
+          visual: ['interactive_graphs', 'geometric_visualization', 'step_by_step_diagrams'],
+          auditory: ['verbal_explanations', 'discussion_groups', 'audio_lectures'],
+          kinesthetic: ['hands_on_problems', 'manipulatives', 'real_world_applications'],
+          reading: ['textbook_study', 'written_proofs', 'formula_derivations']
         }
       },
       'Physics': {
         topics: {
-          'Mechanics': { difficulty: 0.6, prerequisites: ['Basic Math'], time: 140 },
-          'Thermodynamics': { difficulty: 0.7, prerequisites: ['Mechanics'], time: 160 },
-          'Electromagnetism': { difficulty: 0.8, prerequisites: ['Calculus', 'Mechanics'], time: 180 },
-          'Quantum Mechanics': { difficulty: 0.95, prerequisites: ['Calculus', 'Linear Algebra'], time: 220 },
-          'Optics': { difficulty: 0.5, prerequisites: ['Basic Physics'], time: 120 }
+          'Mechanics': { difficulty: 0.6, prerequisites: ['Basic Math'], time: 50, category: 'foundation' },
+          'Thermodynamics': { difficulty: 0.7, prerequisites: ['Mechanics'], time: 55, category: 'intermediate' },
+          'Electromagnetism': { difficulty: 0.8, prerequisites: ['Calculus', 'Mechanics'], time: 65, category: 'advanced' },
+          'Quantum Mechanics': { difficulty: 0.95, prerequisites: ['Calculus', 'Linear Algebra'], time: 80, category: 'expert' },
+          'Optics': { difficulty: 0.5, prerequisites: ['Basic Physics'], time: 40, category: 'intermediate' },
+          'Waves and Sound': { difficulty: 0.6, prerequisites: ['Mechanics'], time: 45, category: 'intermediate' },
+          'Modern Physics': { difficulty: 0.85, prerequisites: ['Electromagnetism'], time: 70, category: 'advanced' }
         },
         learningStyles: {
-          visual: ['simulations', 'animations', 'lab_demonstrations'],
-          auditory: ['lectures', 'discussions'],
-          kinesthetic: ['lab_experiments', 'building_models'],
-          reading: ['theory_study', 'problem_solving']
+          visual: ['physics_simulations', 'lab_demonstrations', 'concept_animations'],
+          auditory: ['physics_lectures', 'problem_discussions', 'concept_explanations'],
+          kinesthetic: ['lab_experiments', 'building_models', 'hands_on_activities'],
+          reading: ['theory_study', 'problem_solving', 'research_papers']
         }
       },
       'Chemistry': {
         topics: {
-          'General Chemistry': { difficulty: 0.4, prerequisites: ['Basic Math'], time: 130 },
-          'Organic Chemistry': { difficulty: 0.8, prerequisites: ['General Chemistry'], time: 190 },
-          'Physical Chemistry': { difficulty: 0.85, prerequisites: ['Calculus', 'General Chemistry'], time: 200 },
-          'Analytical Chemistry': { difficulty: 0.6, prerequisites: ['General Chemistry'], time: 150 },
-          'Biochemistry': { difficulty: 0.7, prerequisites: ['Organic Chemistry'], time: 170 }
+          'General Chemistry': { difficulty: 0.4, prerequisites: ['Basic Math'], time: 45, category: 'foundation' },
+          'Organic Chemistry': { difficulty: 0.8, prerequisites: ['General Chemistry'], time: 65, category: 'advanced' },
+          'Physical Chemistry': { difficulty: 0.85, prerequisites: ['Calculus', 'General Chemistry'], time: 70, category: 'advanced' },
+          'Analytical Chemistry': { difficulty: 0.6, prerequisites: ['General Chemistry'], time: 50, category: 'intermediate' },
+          'Biochemistry': { difficulty: 0.7, prerequisites: ['Organic Chemistry'], time: 60, category: 'advanced' },
+          'Inorganic Chemistry': { difficulty: 0.65, prerequisites: ['General Chemistry'], time: 55, category: 'intermediate' }
         },
         learningStyles: {
-          visual: ['molecular_models', '3d_structures', 'reaction_mechanisms'],
-          auditory: ['verbal_explanations', 'group_discussions'],
-          kinesthetic: ['lab_work', 'model_building'],
-          reading: ['textbook_study', 'research_papers']
+          visual: ['molecular_models', '3d_structures', 'reaction_mechanisms', 'periodic_table_visualization'],
+          auditory: ['verbal_explanations', 'group_discussions', 'concept_lectures'],
+          kinesthetic: ['lab_work', 'model_building', 'hands_on_experiments'],
+          reading: ['textbook_study', 'research_papers', 'chemical_literature']
+        }
+      },
+      'Biology': {
+        topics: {
+          'Cell Biology': { difficulty: 0.5, prerequisites: ['Basic Science'], time: 45, category: 'foundation' },
+          'Genetics': { difficulty: 0.7, prerequisites: ['Cell Biology'], time: 55, category: 'intermediate' },
+          'Molecular Biology': { difficulty: 0.8, prerequisites: ['Genetics', 'Chemistry'], time: 65, category: 'advanced' },
+          'Ecology': { difficulty: 0.6, prerequisites: ['Basic Biology'], time: 50, category: 'intermediate' },
+          'Evolution': { difficulty: 0.65, prerequisites: ['Genetics'], time: 50, category: 'intermediate' },
+          'Anatomy': { difficulty: 0.7, prerequisites: ['Cell Biology'], time: 60, category: 'intermediate' }
+        },
+        learningStyles: {
+          visual: ['biological_diagrams', 'microscopy', 'anatomical_models'],
+          auditory: ['biology_lectures', 'case_discussions', 'verbal_explanations'],
+          kinesthetic: ['lab_experiments', 'dissections', 'field_work'],
+          reading: ['textbook_study', 'research_papers', 'case_studies']
+        }
+      },
+      'Computer Science': {
+        topics: {
+          'Programming Fundamentals': { difficulty: 0.5, prerequisites: ['Basic Logic'], time: 60, category: 'foundation' },
+          'Data Structures': { difficulty: 0.7, prerequisites: ['Programming Fundamentals'], time: 70, category: 'intermediate' },
+          'Algorithms': { difficulty: 0.8, prerequisites: ['Data Structures'], time: 75, category: 'advanced' },
+          'Database Systems': { difficulty: 0.6, prerequisites: ['Programming Fundamentals'], time: 55, category: 'intermediate' },
+          'Machine Learning': { difficulty: 0.85, prerequisites: ['Statistics', 'Programming'], time: 80, category: 'advanced' },
+          'Web Development': { difficulty: 0.6, prerequisites: ['Programming Fundamentals'], time: 65, category: 'intermediate' }
+        },
+        learningStyles: {
+          visual: ['code_visualization', 'flowcharts', 'algorithm_animations'],
+          auditory: ['coding_lectures', 'peer_programming', 'technical_discussions'],
+          kinesthetic: ['hands_on_coding', 'project_building', 'interactive_coding'],
+          reading: ['documentation_study', 'code_reading', 'technical_articles']
         }
       }
     });
@@ -161,43 +198,50 @@ class AIStudyPlanEngine {
   }
 
   public generateStudyPlan(userProfile: UserProfile, goals: string[] = []): StudyPlan {
-    console.log('🤖 AI Engine: Analyzing user profile and generating personalized study plan...');
+    console.log('🤖 AI Engine: Starting study plan generation for:', userProfile.name);
     
-    // Analyze user's current state
-    const userAnalysis = this.analyzeUserProfile(userProfile);
-    
-    // Determine optimal subjects and topics
-    const subjects = this.selectOptimalSubjects(userProfile, userAnalysis, goals);
-    
-    // Generate adaptive milestones
-    const milestones = this.generateMilestones(subjects, userProfile);
-    
-    // Create adaptive features
-    const adaptiveFeatures = this.generateAdaptiveFeatures(userProfile, userAnalysis);
-    
-    // Generate personalized recommendations
-    const recommendations = this.generateRecommendations(userProfile, userAnalysis);
-    
-    // Calculate confidence score
-    const confidence = this.calculateConfidence(userProfile, subjects);
+    try {
+      // Analyze user's current state
+      const userAnalysis = this.analyzeUserProfile(userProfile);
+      console.log('📊 User analysis completed:', userAnalysis);
+      
+      // Determine optimal subjects and topics
+      const subjects = this.selectOptimalSubjects(userProfile, userAnalysis, goals);
+      console.log('📚 Selected subjects:', subjects.map(s => s.name));
+      
+      // Generate adaptive milestones
+      const milestones = this.generateMilestones(subjects, userProfile);
+      
+      // Create adaptive features
+      const adaptiveFeatures = this.generateAdaptiveFeatures(userProfile, userAnalysis);
+      
+      // Generate personalized recommendations
+      const recommendations = this.generateRecommendations(userProfile, userAnalysis);
+      
+      // Calculate confidence score
+      const confidence = this.calculateConfidence(userProfile, subjects);
 
-    const studyPlan: StudyPlan = {
-      id: `plan_${Date.now()}`,
-      title: this.generatePlanTitle(userProfile, userAnalysis),
-      description: this.generatePlanDescription(userProfile, subjects),
-      duration: this.calculateOptimalDuration(subjects, userProfile),
-      dailyTimeCommitment: userProfile.timeAvailable || this.recommendDailyTime(userProfile),
-      difficulty: this.determineDifficulty(userProfile, userAnalysis),
-      subjects,
-      milestones,
-      adaptiveFeatures,
-      personalizedRecommendations: recommendations,
-      estimatedOutcome: this.predictOutcome(userProfile, subjects),
-      confidence
-    };
+      const studyPlan: StudyPlan = {
+        id: `plan_${Date.now()}`,
+        title: this.generatePlanTitle(userProfile, userAnalysis),
+        description: this.generatePlanDescription(userProfile, subjects),
+        duration: this.calculateOptimalDuration(subjects, userProfile),
+        dailyTimeCommitment: userProfile.timeAvailable || this.recommendDailyTime(userProfile),
+        difficulty: this.determineDifficulty(userProfile, userAnalysis),
+        subjects,
+        milestones,
+        adaptiveFeatures,
+        personalizedRecommendations: recommendations,
+        estimatedOutcome: this.predictOutcome(userProfile, subjects),
+        confidence
+      };
 
-    console.log('✅ AI Engine: Study plan generated with', confidence, '% confidence');
-    return studyPlan;
+      console.log('✅ AI Engine: Study plan generated successfully with', confidence, '% confidence');
+      return studyPlan;
+    } catch (error) {
+      console.error('❌ AI Engine: Error generating study plan:', error);
+      throw new Error(`Study plan generation failed: ${error}`);
+    }
   }
 
   private analyzeUserProfile(profile: UserProfile) {
@@ -221,8 +265,10 @@ class AIStudyPlanEngine {
     if (!profile.recentPerformance) {
       // Fallback to basic metrics
       const completionRate = profile.completedLessons / Math.max(profile.level * 10, 1);
-      if (completionRate < 0.6) return 'struggling';
-      if (completionRate > 0.9) return 'excelling';
+      const starRate = profile.totalStars / Math.max(profile.studyTime / 60, 1);
+      
+      if (completionRate < 0.6 || starRate < 5) return 'struggling';
+      if (completionRate > 0.9 && starRate > 15) return 'excelling';
       return 'average';
     }
 
@@ -238,13 +284,12 @@ class AIStudyPlanEngine {
   }
 
   private calculateLearningVelocity(profile: UserProfile): number {
-    // Calculate lessons per hour
     const hoursStudied = profile.studyTime / 60;
-    return hoursStudied > 0 ? profile.completedLessons / hoursStudied : 0;
+    return hoursStudied > 0 ? profile.completedLessons / hoursStudied : 0.5;
   }
 
   private assessMotivation(profile: UserProfile): 'low' | 'medium' | 'high' {
-    const streakScore = Math.min(profile.currentStreak / 30, 1); // Normalize to 30 days
+    const streakScore = Math.min(profile.currentStreak / 30, 1);
     const consistencyScore = profile.studyTime > 0 ? 1 : 0;
     const engagementScore = profile.recentPerformance?.engagement || 50;
     
@@ -256,19 +301,22 @@ class AIStudyPlanEngine {
   }
 
   private identifyKnowledgeGaps(profile: UserProfile): string[] {
-    return profile.weakAreas.map(area => {
-      const subjects = this.knowledgeBase.get('subjects');
-      const subjectData = subjects[area];
-      if (subjectData) {
-        // Find prerequisite gaps
-        const topics = Object.keys(subjectData.topics);
-        return topics.filter(topic => {
-          const topicData = subjectData.topics[topic];
-          return topicData.difficulty > 0.6; // Focus on challenging topics
-        });
+    const gaps: string[] = [];
+    const subjects = this.knowledgeBase.get('subjects');
+    
+    profile.weakAreas.forEach(area => {
+      if (subjects[area]) {
+        const topics = Object.keys(subjects[area].topics);
+        gaps.push(...topics.filter(topic => {
+          const topicData = subjects[area].topics[topic];
+          return topicData.difficulty > 0.6;
+        }));
+      } else {
+        gaps.push(area);
       }
-      return [area];
-    }).flat();
+    });
+    
+    return gaps;
   }
 
   private identifyStrengths(profile: UserProfile): string[] {
@@ -284,32 +332,74 @@ class AIStudyPlanEngine {
   private selectOptimalSubjects(profile: UserProfile, analysis: any, goals: string[]): StudySubject[] {
     const subjects: StudySubject[] = [];
     const subjectsData = this.knowledgeBase.get('subjects');
+    const availableSubjects = Object.keys(subjectsData);
     
     // Prioritize weak areas for improvement
     profile.weakAreas.forEach(weakArea => {
-      if (subjectsData[weakArea]) {
-        subjects.push(this.createStudySubject(weakArea, 'high', profile, analysis, subjectsData[weakArea]));
-      }
-    });
-
-    // Add strong areas for maintenance (lower priority)
-    profile.strongAreas.slice(0, 2).forEach(strongArea => {
-      if (subjectsData[strongArea] && !subjects.find(s => s.name === strongArea)) {
-        subjects.push(this.createStudySubject(strongArea, 'low', profile, analysis, subjectsData[strongArea]));
+      const matchingSubject = availableSubjects.find(subject => 
+        subject.toLowerCase().includes(weakArea.toLowerCase()) || 
+        weakArea.toLowerCase().includes(subject.toLowerCase())
+      );
+      
+      if (matchingSubject && subjectsData[matchingSubject]) {
+        subjects.push(this.createStudySubject(matchingSubject, 'high', profile, analysis, subjectsData[matchingSubject]));
       }
     });
 
     // Add goal-based subjects
     goals.forEach(goal => {
-      const matchingSubject = Object.keys(subjectsData).find(subject => 
-        goal.toLowerCase().includes(subject.toLowerCase())
+      const matchingSubject = availableSubjects.find(subject => 
+        goal.toLowerCase().includes(subject.toLowerCase()) ||
+        this.findSubjectByKeywords(goal, subject)
       );
+      
       if (matchingSubject && !subjects.find(s => s.name === matchingSubject)) {
         subjects.push(this.createStudySubject(matchingSubject, 'medium', profile, analysis, subjectsData[matchingSubject]));
       }
     });
 
+    // Add strong areas for maintenance (lower priority)
+    profile.strongAreas.slice(0, 2).forEach(strongArea => {
+      const matchingSubject = availableSubjects.find(subject => 
+        subject.toLowerCase().includes(strongArea.toLowerCase()) || 
+        strongArea.toLowerCase().includes(subject.toLowerCase())
+      );
+      
+      if (matchingSubject && !subjects.find(s => s.name === matchingSubject)) {
+        subjects.push(this.createStudySubject(matchingSubject, 'low', profile, analysis, subjectsData[matchingSubject]));
+      }
+    });
+
+    // If no subjects found, add default subjects based on level
+    if (subjects.length === 0) {
+      const defaultSubjects = this.getDefaultSubjects(profile.level);
+      defaultSubjects.forEach(subjectName => {
+        if (subjectsData[subjectName]) {
+          subjects.push(this.createStudySubject(subjectName, 'medium', profile, analysis, subjectsData[subjectName]));
+        }
+      });
+    }
+
     return subjects.slice(0, 4); // Limit to 4 subjects max
+  }
+
+  private findSubjectByKeywords(goal: string, subject: string): boolean {
+    const keywords = {
+      'Mathematics': ['math', 'calculus', 'algebra', 'statistics', 'geometry'],
+      'Physics': ['physics', 'mechanics', 'quantum', 'thermodynamics'],
+      'Chemistry': ['chemistry', 'organic', 'biochemistry', 'molecular'],
+      'Biology': ['biology', 'genetics', 'ecology', 'anatomy'],
+      'Computer Science': ['programming', 'coding', 'software', 'algorithms', 'data']
+    };
+    
+    const subjectKeywords = keywords[subject as keyof typeof keywords] || [];
+    return subjectKeywords.some(keyword => goal.toLowerCase().includes(keyword));
+  }
+
+  private getDefaultSubjects(level: number): string[] {
+    if (level <= 5) return ['Mathematics', 'Physics'];
+    if (level <= 10) return ['Mathematics', 'Physics', 'Chemistry'];
+    return ['Mathematics', 'Physics', 'Chemistry', 'Biology'];
   }
 
   private createStudySubject(subjectName: string, priority: 'high' | 'medium' | 'low', profile: UserProfile, analysis: any, subjectData: any): StudySubject {
@@ -328,29 +418,26 @@ class AIStudyPlanEngine {
   private generateSubjectReasoning(subjectName: string, priority: 'high' | 'medium' | 'low', profile: UserProfile, analysis: any): string {
     const reasons: string[] = [];
     
-    // Priority-based reasoning
     if (priority === 'high') {
-      if (profile.weakAreas.includes(subjectName)) {
+      if (profile.weakAreas.some(area => area.toLowerCase().includes(subjectName.toLowerCase()))) {
         reasons.push(`${subjectName} is identified as a weak area requiring focused improvement`);
       }
       reasons.push('High priority due to fundamental importance for your learning goals');
     } else if (priority === 'medium') {
       reasons.push(`${subjectName} supports your overall academic development`);
     } else {
-      if (profile.strongAreas.includes(subjectName)) {
+      if (profile.strongAreas.some(area => area.toLowerCase().includes(subjectName.toLowerCase()))) {
         reasons.push(`${subjectName} is a strength area that needs maintenance to prevent skill decay`);
       }
       reasons.push('Lower priority but important for comprehensive knowledge');
     }
 
-    // Performance-based reasoning
     if (analysis.performanceLevel === 'struggling') {
       reasons.push('Adjusted difficulty to build confidence and solid foundations');
     } else if (analysis.performanceLevel === 'excelling') {
       reasons.push('Enhanced with challenging content to maximize your potential');
     }
 
-    // Learning style consideration
     if (profile.learningStyle) {
       reasons.push(`Tailored resources match your ${profile.learningStyle} learning preference`);
     }
@@ -364,7 +451,6 @@ class AIStudyPlanEngine {
     const learningStyle = profile.learningStyle || 'visual';
     
     Object.entries(topicsData).forEach(([topicName, topicInfo]: [string, any]) => {
-      // Filter topics based on user's current level and performance
       const isAppropriate = this.isTopicAppropriate(topicInfo, profile, analysis);
       
       if (isAppropriate) {
@@ -380,20 +466,19 @@ class AIStudyPlanEngine {
       }
     });
 
-    return topics.slice(0, 6); // Limit topics per subject
+    return topics.slice(0, 6);
   }
 
   private isTopicAppropriate(topicInfo: any, profile: UserProfile, analysis: any): boolean {
-    const userLevel = profile.level / 20; // Normalize level to 0-1 scale
+    const userLevel = Math.min(profile.level / 20, 1);
     const difficultyGap = Math.abs(topicInfo.difficulty - userLevel);
     
-    // Topic is appropriate if difficulty gap is reasonable
     if (analysis.performanceLevel === 'excelling') {
-      return difficultyGap <= 0.3; // Can handle more challenging topics
+      return difficultyGap <= 0.4;
     } else if (analysis.performanceLevel === 'struggling') {
-      return topicInfo.difficulty <= userLevel + 0.1; // Stick to easier topics
+      return topicInfo.difficulty <= userLevel + 0.2;
     }
-    return difficultyGap <= 0.2; // Moderate challenge for average performers
+    return difficultyGap <= 0.3;
   }
 
   private generateLearningObjectives(topicName: string, topicInfo: any): string[] {
@@ -425,7 +510,6 @@ class AIStudyPlanEngine {
       });
     });
 
-    // Add universal resources
     resources.push({
       type: 'practice',
       title: `${topicName} Practice Problems`,
@@ -555,14 +639,16 @@ class AIStudyPlanEngine {
 
   private mapResourceType(resourceType: string): Resource['type'] {
     const mapping: { [key: string]: Resource['type'] } = {
-      'graphs': 'interactive',
-      'diagrams': 'interactive',
-      'simulations': 'simulation',
-      'animations': 'video',
-      'lectures': 'video',
+      'interactive_graphs': 'interactive',
+      'geometric_visualization': 'interactive',
+      'physics_simulations': 'simulation',
+      'concept_animations': 'video',
+      'physics_lectures': 'video',
       'textbook_study': 'article',
       'lab_experiments': 'interactive',
-      'hands_on_problems': 'practice'
+      'hands_on_problems': 'practice',
+      'molecular_models': 'interactive',
+      '3d_structures': 'interactive'
     };
     return mapping[resourceType] || 'article';
   }
@@ -580,15 +666,15 @@ class AIStudyPlanEngine {
 
   private calculateOptimalDuration(subjects: StudySubject[], profile: UserProfile): number {
     const totalTopics = subjects.reduce((sum, subject) => sum + subject.topics.length, 0);
-    const dailyCapacity = (profile.timeAvailable || 60) / 60; // hours per day
-    const estimatedDays = Math.ceil(totalTopics * 2 / dailyCapacity); // 2 hours per topic average
-    return Math.max(14, Math.min(estimatedDays, 90)); // Between 2 weeks and 3 months
+    const dailyCapacity = (profile.timeAvailable || 60) / 60;
+    const estimatedDays = Math.ceil(totalTopics * 2 / dailyCapacity);
+    return Math.max(14, Math.min(estimatedDays, 90));
   }
 
   private recommendDailyTime(profile: UserProfile): number {
-    const baseTime = 60; // 1 hour default
-    if (profile.level > 15) return 90; // Advanced users
-    if (profile.currentStreak > 20) return 75; // Consistent users
+    const baseTime = 60;
+    if (profile.level > 15) return 90;
+    if (profile.currentStreak > 20) return 75;
     return baseTime;
   }
 
@@ -620,14 +706,12 @@ class AIStudyPlanEngine {
   }
 
   private calculateConfidence(profile: UserProfile, subjects: StudySubject[]): number {
-    let confidence = 70; // Base confidence
+    let confidence = 70;
     
-    // Adjust based on user history
     if (profile.currentStreak > 10) confidence += 10;
     if (profile.completedLessons > 50) confidence += 10;
     if (profile.recentPerformance?.consistency > 80) confidence += 10;
     
-    // Adjust based on plan complexity
     const avgDifficulty = subjects.reduce((sum, subject) => {
       const topicDifficulties = subject.topics.map(topic => {
         switch (topic.difficulty) {

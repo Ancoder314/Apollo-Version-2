@@ -134,7 +134,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   const generateAIRecommendedTasks = () => {
     if (!currentStudyPlan || !profile) return;
 
-    const tasks = [];
+    const tasks: any[] = [];
     
     // Generate tasks based on study plan subjects
     currentStudyPlan.subjects.forEach((subject, index) => {
@@ -151,7 +151,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
             description: `Master ${topic.name} with ${getTaskType(subject.name, topic.difficulty).toLowerCase()}`,
             aiRecommended: subject.priority === 'high',
             learningStyle: profile.learning_style || 'visual',
-            prerequisites: topic.prerequisites || []
+            prerequisites: topic.prerequisites || [],
+            learningObjectives: topic.learningObjectives || [],
+            resources: topic.resources || [],
+            assessments: topic.assessments || []
           });
         }
       });
@@ -165,6 +168,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
       'Mathematics': ['Adaptive Practice', 'Problem Solving', 'Concept Mastery'],
       'Physics': ['Interactive Simulation', 'Lab Experiment', 'Theory Application'],
       'Chemistry': ['Visual Learning + 3D Modeling', 'Reaction Mechanisms', 'Lab Practice'],
+      'Biology': ['Interactive Diagrams', 'Case Studies', 'Lab Analysis'],
+      'Computer Science': ['Coding Practice', 'Algorithm Design', 'Project Building'],
       'default': ['Adaptive Practice', 'Interactive Learning', 'Concept Review']
     };
     
@@ -296,18 +301,24 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     // Find high priority subjects (weak areas)
     const focusSubjects = currentStudyPlan.subjects.filter(s => s.priority === 'high');
     if (focusSubjects.length > 0) {
+      const subject = focusSubjects[0];
+      const topic = subject.topics[0];
+      
       const focusTask = {
         id: 'focus-task',
         type: 'Focus Session',
-        subject: focusSubjects[0].name,
-        topic: focusSubjects[0].topics[0]?.name || 'Foundation Review',
+        subject: subject.name,
+        topic: topic?.name || 'Foundation Review',
         difficulty: 'Adaptive',
         duration: 45,
         stars: 20,
-        description: `Targeted practice for your weak area: ${focusSubjects[0].name}`,
+        description: `Targeted practice for your weak area: ${subject.name}`,
         aiRecommended: true,
         learningStyle: profile?.learning_style || 'visual',
-        prerequisites: []
+        prerequisites: topic?.prerequisites || [],
+        learningObjectives: topic?.learningObjectives || [`Master ${subject.name} fundamentals`],
+        resources: topic?.resources || [],
+        assessments: topic?.assessments || []
       };
       handleTaskStart(focusTask);
     }
@@ -315,6 +326,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
 
   const handleQuickReview = () => {
     if (!currentStudyPlan) return;
+    
+    // Get recently studied topics
+    const allTopics = currentStudyPlan.subjects.flatMap(s => s.topics);
+    const reviewTopics = allTopics.slice(0, 3); // Last 3 topics
     
     const reviewTask = {
       id: 'review-task',
@@ -327,7 +342,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
       description: 'Quick review of recently studied concepts',
       aiRecommended: true,
       learningStyle: profile?.learning_style || 'visual',
-      prerequisites: []
+      prerequisites: [],
+      learningObjectives: ['Review and reinforce recent learning'],
+      resources: [],
+      assessments: [],
+      reviewTopics: reviewTopics.map(t => t.name)
     };
     handleTaskStart(reviewTask);
   };
@@ -341,22 +360,26 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     );
     
     if (challengeSubjects.length > 0) {
-      const advancedTopic = challengeSubjects[0].topics.find(t => 
+      const subject = challengeSubjects[0];
+      const advancedTopic = subject.topics.find(t => 
         t.difficulty === 'Advanced' || t.difficulty === 'Expert'
       );
       
       const challengeTask = {
         id: 'challenge-task',
         type: 'Challenge Mode',
-        subject: challengeSubjects[0].name,
+        subject: subject.name,
         topic: advancedTopic?.name || 'Advanced Problems',
         difficulty: 'Expert',
         duration: 60,
         stars: 30,
-        description: `Challenge yourself with advanced ${challengeSubjects[0].name} problems`,
+        description: `Challenge yourself with advanced ${subject.name} problems`,
         aiRecommended: true,
         learningStyle: profile?.learning_style || 'visual',
-        prerequisites: advancedTopic?.prerequisites || []
+        prerequisites: advancedTopic?.prerequisites || [],
+        learningObjectives: advancedTopic?.learningObjectives || [`Master advanced ${subject.name}`],
+        resources: advancedTopic?.resources || [],
+        assessments: advancedTopic?.assessments || []
       };
       handleTaskStart(challengeTask);
     }
@@ -379,6 +402,16 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
                 : 'Ready to create your personalized AI study plan?'
               }
             </p>
+            {currentStudyPlan && (
+              <div className="mt-2 flex items-center space-x-4 text-sm">
+                <span className="text-purple-400">
+                  {currentStudyPlan.subjects.length} subjects • {currentStudyPlan.duration} days
+                </span>
+                <span className="text-green-400">
+                  {currentStudyPlan.confidence}% confidence
+                </span>
+              </div>
+            )}
           </div>
           <div className="text-right">
             <div className="text-3xl font-bold text-purple-400">{profile.level}</div>
@@ -468,6 +501,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
                       <div className="flex items-center space-x-1">
                         <Star className="w-4 h-4 text-yellow-400" />
                         <span>{task.stars} stars</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Target className="w-4 h-4" />
+                        <span>{task.type}</span>
                       </div>
                     </div>
                   </div>
@@ -572,6 +609,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
           onPlanGenerated={(plan) => {
             setCurrentStudyPlan(plan);
             setShowPlanGenerator(false);
+            // Refresh the page data
+            fetchActiveStudyPlan();
           }}
         />
       )}
