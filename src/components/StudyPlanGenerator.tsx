@@ -27,6 +27,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
   const { profile, updateProfile } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     goals: [''],
     weakAreas: [''],
@@ -105,11 +106,30 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
   };
 
   const generateStudyPlan = async () => {
-    if (!profile) return;
+    if (!profile) {
+      setError('Profile not found. Please try refreshing the page.');
+      return;
+    }
 
     setLoading(true);
+    setError('');
+    
     try {
+      console.log('Starting study plan generation...');
+      
+      // Validate form data
+      const validGoals = formData.goals.filter(goal => goal.trim());
+      const validWeakAreas = formData.weakAreas.filter(area => area.trim());
+      const validStrongAreas = formData.strongAreas.filter(area => area.trim());
+      
+      if (validGoals.length === 0) {
+        setError('Please provide at least one learning goal.');
+        setLoading(false);
+        return;
+      }
+
       // Process uploaded files
+      console.log('Processing uploaded files...');
       const fileContent = await processUploadedFiles();
       
       // Combine all information
@@ -126,13 +146,19 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
       `.trim();
 
       // Create enhanced user profile
+      console.log('Creating enhanced user profile...');
       const enhancedProfile = {
-        ...profile,
-        weakAreas: formData.weakAreas.filter(area => area.trim()),
-        strongAreas: formData.strongAreas.filter(area => area.trim()),
+        name: profile.name,
+        level: profile.level,
+        totalStars: profile.total_stars,
+        currentStreak: profile.current_streak,
+        studyTime: profile.study_time,
+        completedLessons: profile.completed_lessons,
+        weakAreas: validWeakAreas,
+        strongAreas: validStrongAreas,
         learningStyle: formData.learningStyle as any,
         preferredDifficulty: formData.preferredDifficulty as any,
-        studyGoals: formData.goals.filter(goal => goal.trim()),
+        studyGoals: validGoals,
         timeAvailable: formData.timeAvailable,
         recentPerformance: {
           accuracy: 75,
@@ -143,13 +169,21 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
       };
 
       // Generate AI study plan
-      const plan = aiEngine.generateStudyPlan(
-        enhancedProfile,
-        formData.goals.filter(goal => goal.trim())
-      );
+      console.log('Generating AI study plan...');
+      const plan = aiEngine.generateStudyPlan(enhancedProfile, validGoals);
+      console.log('Study plan generated:', plan);
+
+      // Deactivate existing active plans
+      console.log('Deactivating existing plans...');
+      await supabase
+        .from('study_plans')
+        .update({ is_active: false })
+        .eq('user_id', profile.id)
+        .eq('is_active', true);
 
       // Save to database
-      const { data, error } = await supabase
+      console.log('Saving study plan to database...');
+      const { data, error: insertError } = await supabase
         .from('study_plans')
         .insert({
           user_id: profile.id,
@@ -169,21 +203,28 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
         .select()
         .single();
 
-      if (error) throw error;
+      if (insertError) {
+        console.error('Database insert error:', insertError);
+        throw new Error(`Failed to save study plan: ${insertError.message}`);
+      }
+
+      console.log('Study plan saved successfully:', data);
 
       // Update user profile with new preferences
+      console.log('Updating user profile...');
       await updateProfile({
-        weak_areas: formData.weakAreas.filter(area => area.trim()),
-        strong_areas: formData.strongAreas.filter(area => area.trim()),
+        weak_areas: validWeakAreas,
+        strong_areas: validStrongAreas,
         learning_style: formData.learningStyle,
-        study_goals: formData.goals.filter(goal => goal.trim())
+        study_goals: validGoals
       });
 
+      console.log('Study plan generation completed successfully');
       onPlanGenerated({ ...plan, id: data.id });
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating study plan:', error);
-      alert('Failed to generate study plan. Please try again.');
+      setError(error.message || 'Failed to generate study plan. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -466,6 +507,15 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[60vh]">
+          {error && (
+            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="w-5 h-5 text-red-400" />
+                <p className="text-red-400">{error}</p>
+              </div>
+            </div>
+          )}
+          
           {step === 1 && renderStep1()}
           {step === 2 && renderStep2()}
           {step === 3 && renderStep3()}
@@ -481,7 +531,8 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
               {step > 1 && (
                 <button
                   onClick={() => setStep(step - 1)}
-                  className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                  disabled={loading}
+                  className="px-4 py-2 bg-slate-600 hover:bg-slate-700 disabled:opacity-50 text-white rounded-lg transition-colors"
                 >
                   Previous
                 </button>
@@ -489,7 +540,8 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
               {step < 3 ? (
                 <button
                   onClick={() => setStep(step + 1)}
-                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                  disabled={loading}
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-lg transition-colors"
                 >
                   Next
                 </button>
