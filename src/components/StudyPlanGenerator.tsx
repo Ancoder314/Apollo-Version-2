@@ -11,7 +11,8 @@ import {
   Trash2,
   Loader,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { useAuth } from '../hooks/useAuth';
@@ -94,7 +95,6 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
           const text = await file.text();
           extractedText += `\n\nFrom ${file.name}:\n${text}`;
         } else {
-          // For other file types, we'll just note the filename
           extractedText += `\n\nUploaded file: ${file.name} (${file.type})`;
         }
       } catch (error) {
@@ -168,9 +168,9 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
         }
       };
 
-      // Generate AI study plan
+      // Generate AI study plan (now with OpenAI integration)
       console.log('🤖 Generating AI study plan...');
-      const plan = aiEngine.generateStudyPlan(enhancedProfile, validGoals);
+      const plan = await aiEngine.generateStudyPlan(enhancedProfile, validGoals);
       console.log('✅ Study plan generated:', plan);
 
       // Deactivate existing active plans
@@ -230,8 +230,38 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
     }
   };
 
+  const hasOpenAIKey = import.meta.env.VITE_OPENAI_API_KEY && 
+                      import.meta.env.VITE_OPENAI_API_KEY !== 'your_openai_api_key_here';
+
   const renderStep1 = () => (
     <div className="space-y-6">
+      {/* OpenAI Status Indicator */}
+      <div className={`p-4 rounded-lg border ${
+        hasOpenAIKey 
+          ? 'bg-green-500/10 border-green-500/20' 
+          : 'bg-yellow-500/10 border-yellow-500/20'
+      }`}>
+        <div className="flex items-center space-x-2">
+          {hasOpenAIKey ? (
+            <>
+              <Zap className="w-5 h-5 text-green-400" />
+              <span className="text-green-400 font-semibold">Enhanced AI Mode Active</span>
+            </>
+          ) : (
+            <>
+              <Brain className="w-5 h-5 text-yellow-400" />
+              <span className="text-yellow-400 font-semibold">Standard AI Mode</span>
+            </>
+          )}
+        </div>
+        <p className="text-sm text-gray-300 mt-1">
+          {hasOpenAIKey 
+            ? 'Using OpenAI GPT-4 for advanced study plan generation with personalized content.'
+            : 'Using built-in AI engine. Add OpenAI API key for enhanced personalization.'
+          }
+        </p>
+      </div>
+
       <div>
         <h3 className="text-xl font-bold text-white mb-4">Learning Goals</h3>
         <p className="text-gray-400 mb-4">What do you want to achieve? Be specific about your learning objectives.</p>
@@ -558,7 +588,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
                     </>
                   ) : (
                     <>
-                      <Brain className="w-4 h-4" />
+                      {hasOpenAIKey ? <Zap className="w-4 h-4" /> : <Brain className="w-4 h-4" />}
                       <span>Generate AI Study Plan</span>
                     </>
                   )}

@@ -16,7 +16,8 @@
     "@supabase/supabase-js": "^2.39.0",
     "react-dropzone": "^14.2.3",
     "recharts": "^2.10.3",
-    "date-fns": "^3.0.6"
+    "date-fns": "^3.0.6",
+    "openai": "^4.20.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
