@@ -53,13 +53,20 @@ export const useAuth = () => {
 
   const fetchProfile = async (userId: string) => {
     try {
+      // Use maybeSingle() to handle cases where no profile exists without throwing an error
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code === 'PGRST116') {
+      if (error) {
+        console.error('Error fetching profile:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (!data) {
         // Profile doesn't exist, create one
         const newProfile = {
           id: userId,
@@ -82,15 +89,33 @@ export const useAuth = () => {
           .select()
           .single();
 
-        if (createError) throw createError;
-        setProfile(createdProfile);
-      } else if (error) {
-        throw error;
+        if (createError) {
+          // Handle race condition where profile was created by another request
+          if (createError.code === '23505') {
+            // Unique constraint violation - profile already exists, fetch it
+            console.log('Profile already exists, fetching existing profile...');
+            const { data: existingProfile, error: fetchError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userId)
+              .single();
+            
+            if (fetchError) {
+              console.error('Error fetching existing profile:', fetchError);
+            } else {
+              setProfile(existingProfile);
+            }
+          } else {
+            console.error('Error creating profile:', createError);
+          }
+        } else {
+          setProfile(createdProfile);
+        }
       } else {
         setProfile(data);
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error in fetchProfile:', error);
     } finally {
       setLoading(false);
     }
