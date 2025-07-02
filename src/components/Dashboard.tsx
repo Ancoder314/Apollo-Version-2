@@ -1,28 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { 
+  Home, 
   BookOpen, 
-  Target, 
-  TrendingUp, 
-  Clock, 
+  BarChart3, 
   Star, 
-  Play,
+  User, 
+  Timer,
+  Target,
+  TrendingUp,
+  Award,
+  LogOut,
   Brain,
   Zap,
-  Award,
-  ChevronRight,
-  Lightbulb,
-  BarChart3,
-  Users,
-  Calendar,
-  Settings,
-  Sparkles,
-  Rocket,
-  Eye,
-  Headphones,
-  PenTool,
-  MessageSquare,
+  Play,
+  Clock,
+  Lock,
+  CheckCircle,
   Plus,
-  Lock
+  Sparkles
 } from 'lucide-react';
 import InteractiveStudySession from './InteractiveStudySession';
 import StudyPlanGenerator from './StudyPlanGenerator';
@@ -41,6 +36,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   const [showPlanGenerator, setShowPlanGenerator] = useState(false);
   const [currentStudyPlan, setCurrentStudyPlan] = useState<StudyPlan | null>(null);
   const [studyTasks, setStudyTasks] = useState<any[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [dailyProgress, setDailyProgress] = useState({
     studyTime: 0,
     lessonsCompleted: 0,
@@ -53,6 +49,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     if (profile) {
       fetchActiveStudyPlan();
       fetchDailyProgress();
+      loadCompletedTasks();
     }
   }, [profile]);
 
@@ -61,6 +58,21 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
       generateAIRecommendedTasks();
     }
   }, [currentStudyPlan]);
+
+  const loadCompletedTasks = () => {
+    const today = new Date().toDateString();
+    const savedTasks = localStorage.getItem(`completed_tasks_${profile?.id}_${today}`);
+    if (savedTasks) {
+      setCompletedTasks(new Set(JSON.parse(savedTasks)));
+    }
+  };
+
+  const saveCompletedTask = (taskId: string) => {
+    const today = new Date().toDateString();
+    const newCompleted = new Set([...completedTasks, taskId]);
+    setCompletedTasks(newCompleted);
+    localStorage.setItem(`completed_tasks_${profile?.id}_${today}`, JSON.stringify([...newCompleted]));
+  };
 
   const fetchActiveStudyPlan = async () => {
     if (!profile) return;
@@ -197,6 +209,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     if (!profile || !activeTask) return;
 
     try {
+      // Mark task as completed
+      saveCompletedTask(activeTask.id);
+
       // Update user profile
       const newTotalStars = profile.total_stars + earnedStars;
       const newCompletedLessons = profile.completed_lessons + 1;
@@ -262,77 +277,51 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     setActiveTask(null);
   };
 
-  const quickActions = [
-    { 
-      icon: Brain, 
-      label: 'AI Study Plan', 
-      color: 'from-purple-500 to-pink-500',
-      action: () => setShowPlanGenerator(true),
-      description: currentStudyPlan ? 'Update your study plan' : 'Get a personalized study plan powered by AI'
-    },
-    { 
-      icon: Target, 
-      label: 'Focus Areas', 
-      color: 'from-blue-500 to-cyan-500',
-      action: () => handleFocusAreas(),
-      description: 'Work on your identified weak areas',
-      disabled: !currentStudyPlan
-    },
-    { 
-      icon: Zap, 
-      label: 'Quick Review', 
-      color: 'from-green-500 to-emerald-500',
-      action: () => handleQuickReview(),
-      description: 'Review recent topics and concepts',
-      disabled: !currentStudyPlan
-    },
-    { 
-      icon: Award, 
-      label: 'Challenges', 
-      color: 'from-orange-500 to-red-500',
-      action: () => handleChallenges(),
-      description: 'Take on advanced problem sets',
-      disabled: !currentStudyPlan
-    }
-  ];
-
-  const handleFocusAreas = () => {
-    if (!currentStudyPlan) return;
+  const generatePersonalizedFocusTask = () => {
+    if (!currentStudyPlan) return null;
     
     // Find high priority subjects (weak areas)
     const focusSubjects = currentStudyPlan.subjects.filter(s => s.priority === 'high');
-    if (focusSubjects.length > 0) {
-      const subject = focusSubjects[0];
-      const topic = subject.topics[0];
-      
-      const focusTask = {
-        id: 'focus-task',
-        type: 'Focus Session',
-        subject: subject.name,
-        topic: topic?.name || 'Foundation Review',
-        difficulty: 'Adaptive',
-        duration: 45,
-        stars: 20,
-        description: `Targeted practice for your weak area: ${subject.name}`,
-        aiRecommended: true,
-        learningStyle: profile?.learning_style || 'visual',
-        prerequisites: topic?.prerequisites || [],
-        learningObjectives: topic?.learningObjectives || [`Master ${subject.name} fundamentals`],
-        resources: topic?.resources || [],
-        assessments: topic?.assessments || []
-      };
-      handleTaskStart(focusTask);
-    }
+    if (focusSubjects.length === 0) return null;
+
+    const subject = focusSubjects[0];
+    const topic = subject.topics[0];
+    
+    return {
+      id: 'focus-task',
+      type: 'Focus Session',
+      subject: subject.name,
+      topic: topic?.name || 'Foundation Review',
+      difficulty: 'Adaptive',
+      duration: 45,
+      stars: 20,
+      description: `Targeted practice for your weak area: ${subject.name}. ${subject.reasoning}`,
+      aiRecommended: true,
+      learningStyle: profile?.learning_style || 'visual',
+      prerequisites: topic?.prerequisites || [],
+      learningObjectives: topic?.learningObjectives || [`Master ${subject.name} fundamentals`],
+      resources: topic?.resources || [],
+      assessments: topic?.assessments || [],
+      isPersonalized: true
+    };
   };
 
-  const handleQuickReview = () => {
-    if (!currentStudyPlan) return;
+  const generatePersonalizedQuickReview = () => {
+    if (!currentStudyPlan) return null;
     
-    // Get recently studied topics
-    const allTopics = currentStudyPlan.subjects.flatMap(s => s.topics);
-    const reviewTopics = allTopics.slice(0, 3); // Last 3 topics
+    // Get recently studied topics from completed tasks
+    const recentTopics = studyTasks
+      .filter(task => completedTasks.has(task.id))
+      .slice(-3)
+      .map(task => task.topic);
     
-    const reviewTask = {
+    if (recentTopics.length === 0) {
+      // Use first few topics from study plan
+      const allTopics = currentStudyPlan.subjects.flatMap(s => s.topics.slice(0, 2));
+      recentTopics.push(...allTopics.slice(0, 3).map(t => t.name));
+    }
+    
+    return {
       id: 'review-task',
       type: 'Quick Review',
       subject: 'Mixed Review',
@@ -340,51 +329,116 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
       difficulty: 'Intermediate',
       duration: 20,
       stars: 10,
-      description: 'Quick review of recently studied concepts',
+      description: `Quick review of recently studied concepts: ${recentTopics.join(', ')}`,
       aiRecommended: true,
       learningStyle: profile?.learning_style || 'visual',
       prerequisites: [],
       learningObjectives: ['Review and reinforce recent learning'],
       resources: [],
       assessments: [],
-      reviewTopics: reviewTopics.map(t => t.name)
+      reviewTopics: recentTopics,
+      isPersonalized: true
     };
-    handleTaskStart(reviewTask);
   };
 
-  const handleChallenges = () => {
-    if (!currentStudyPlan) return;
+  const generatePersonalizedChallenge = () => {
+    if (!currentStudyPlan) return null;
     
-    // Find advanced topics
+    // Find advanced topics from study plan
     const challengeSubjects = currentStudyPlan.subjects.filter(s => 
       s.topics.some(t => t.difficulty === 'Advanced' || t.difficulty === 'Expert')
     );
     
-    if (challengeSubjects.length > 0) {
-      const subject = challengeSubjects[0];
-      const advancedTopic = subject.topics.find(t => 
-        t.difficulty === 'Advanced' || t.difficulty === 'Expert'
-      );
-      
-      const challengeTask = {
-        id: 'challenge-task',
-        type: 'Challenge Mode',
-        subject: subject.name,
-        topic: advancedTopic?.name || 'Advanced Problems',
-        difficulty: 'Expert',
-        duration: 60,
-        stars: 30,
-        description: `Challenge yourself with advanced ${subject.name} problems`,
-        aiRecommended: true,
-        learningStyle: profile?.learning_style || 'visual',
-        prerequisites: advancedTopic?.prerequisites || [],
-        learningObjectives: advancedTopic?.learningObjectives || [`Master advanced ${subject.name}`],
-        resources: advancedTopic?.resources || [],
-        assessments: advancedTopic?.assessments || []
-      };
+    if (challengeSubjects.length === 0) return null;
+
+    const subject = challengeSubjects[0];
+    const advancedTopic = subject.topics.find(t => 
+      t.difficulty === 'Advanced' || t.difficulty === 'Expert'
+    );
+    
+    return {
+      id: 'challenge-task',
+      type: 'Challenge Mode',
+      subject: subject.name,
+      topic: advancedTopic?.name || 'Advanced Problems',
+      difficulty: 'Expert',
+      duration: 60,
+      stars: 30,
+      description: `Challenge yourself with advanced ${subject.name} problems. Test your mastery!`,
+      aiRecommended: true,
+      learningStyle: profile?.learning_style || 'visual',
+      prerequisites: advancedTopic?.prerequisites || [],
+      learningObjectives: advancedTopic?.learningObjectives || [`Master advanced ${subject.name}`],
+      resources: advancedTopic?.resources || [],
+      assessments: advancedTopic?.assessments || [],
+      isPersonalized: true
+    };
+  };
+
+  const handleFocusAreas = () => {
+    if (!currentStudyPlan) return;
+    const focusTask = generatePersonalizedFocusTask();
+    if (focusTask) {
+      handleTaskStart(focusTask);
+    }
+  };
+
+  const handleQuickReview = () => {
+    if (!currentStudyPlan) return;
+    const reviewTask = generatePersonalizedQuickReview();
+    if (reviewTask) {
+      handleTaskStart(reviewTask);
+    }
+  };
+
+  const handleChallenges = () => {
+    if (!currentStudyPlan) return;
+    const challengeTask = generatePersonalizedChallenge();
+    if (challengeTask) {
       handleTaskStart(challengeTask);
     }
   };
+
+  const quickActions = [
+    { 
+      icon: Brain, 
+      label: 'AI Study Plan', 
+      color: 'from-purple-500 to-pink-500',
+      action: () => setShowPlanGenerator(true),
+      description: currentStudyPlan ? 'Update your study plan' : 'Get a personalized study plan powered by AI',
+      disabled: false
+    },
+    { 
+      icon: Target, 
+      label: 'Focus Areas', 
+      color: 'from-blue-500 to-cyan-500',
+      action: handleFocusAreas,
+      description: currentStudyPlan 
+        ? `Work on ${currentStudyPlan.subjects.filter(s => s.priority === 'high')[0]?.name || 'your weak areas'}`
+        : 'Work on your identified weak areas',
+      disabled: !currentStudyPlan
+    },
+    { 
+      icon: Zap, 
+      label: 'Quick Review', 
+      color: 'from-green-500 to-emerald-500',
+      action: handleQuickReview,
+      description: currentStudyPlan 
+        ? 'Review recently completed topics and concepts'
+        : 'Review recent topics and concepts',
+      disabled: !currentStudyPlan
+    },
+    { 
+      icon: Award, 
+      label: 'Challenges', 
+      color: 'from-orange-500 to-red-500',
+      action: handleChallenges,
+      description: currentStudyPlan 
+        ? `Advanced ${currentStudyPlan.subjects.find(s => s.topics.some(t => t.difficulty === 'Advanced'))?.name || 'problem'} sets`
+        : 'Take on advanced problem sets',
+      disabled: !currentStudyPlan
+    }
+  ];
 
   if (!profile) return null;
 
@@ -430,8 +484,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
               key={index}
               onClick={action.action}
               disabled={action.disabled}
-              className={`group bg-slate-800/60 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50 hover:border-purple-500/50 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/10 ${
-                action.disabled ? 'opacity-50 cursor-not-allowed' : ''
+              className={`group bg-slate-800/60 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50 transition-all duration-300 ${
+                action.disabled 
+                  ? 'opacity-50 cursor-not-allowed' 
+                  : 'hover:border-purple-500/50 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/10'
               }`}
             >
               <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform relative`}>
@@ -495,63 +551,87 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
           </div>
           
           <div className="p-6 space-y-4">
-            {studyTasks.map((task) => (
-              <div
-                key={task.id}
-                className="group bg-slate-700/30 rounded-lg p-6 border border-slate-600/50 hover:border-purple-500/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-500/10"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="flex items-center space-x-2">
-                        <BookOpen className="w-5 h-5 text-purple-400" />
-                        <span className="text-white font-semibold">{task.subject}</span>
-                      </div>
-                      {task.aiRecommended && (
-                        <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
-                          <Brain className="w-3 h-3" />
-                          <span>AI Pick</span>
+            {studyTasks.map((task) => {
+              const isCompleted = completedTasks.has(task.id);
+              return (
+                <div
+                  key={task.id}
+                  className={`group rounded-lg p-6 border transition-all duration-300 ${
+                    isCompleted 
+                      ? 'bg-green-500/10 border-green-500/30' 
+                      : 'bg-slate-700/30 border-slate-600/50 hover:border-purple-500/50 hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-500/10'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="flex items-center space-x-2">
+                          {isCompleted ? (
+                            <CheckCircle className="w-5 h-5 text-green-400" />
+                          ) : (
+                            <BookOpen className="w-5 h-5 text-purple-400" />
+                          )}
+                          <span className={`font-semibold ${isCompleted ? 'text-green-300' : 'text-white'}`}>
+                            {task.subject}
+                          </span>
+                        </div>
+                        {task.aiRecommended && (
+                          <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
+                            <Brain className="w-3 h-3" />
+                            <span>AI Pick</span>
+                          </span>
+                        )}
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          task.difficulty === 'Beginner' ? 'text-green-400 bg-green-500/10' :
+                          task.difficulty === 'Intermediate' ? 'text-yellow-400 bg-yellow-500/10' :
+                          task.difficulty === 'Advanced' ? 'text-orange-400 bg-orange-500/10' :
+                          'text-red-400 bg-red-500/10'
+                        }`}>
+                          {task.difficulty}
                         </span>
-                      )}
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        task.difficulty === 'Beginner' ? 'text-green-400 bg-green-500/10' :
-                        task.difficulty === 'Intermediate' ? 'text-yellow-400 bg-yellow-500/10' :
-                        task.difficulty === 'Advanced' ? 'text-orange-400 bg-orange-500/10' :
-                        'text-red-400 bg-red-500/10'
-                      }`}>
-                        {task.difficulty}
-                      </span>
+                        {isCompleted && (
+                          <span className="text-green-400 text-xs bg-green-500/10 px-2 py-1 rounded-full">
+                            Completed
+                          </span>
+                        )}
+                      </div>
+                      
+                      <h4 className={`text-lg font-bold mb-2 ${isCompleted ? 'text-green-300' : 'text-white'}`}>
+                        {task.topic}
+                      </h4>
+                      <p className={`mb-4 ${isCompleted ? 'text-green-200' : 'text-gray-300'}`}>
+                        {task.description}
+                      </p>
+                      
+                      <div className="flex items-center space-x-6 text-sm text-gray-400">
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-4 h-4" />
+                          <span>{task.duration} min</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Star className="w-4 h-4 text-yellow-400" />
+                          <span>{task.stars} stars</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Target className="w-4 h-4" />
+                          <span>{task.type}</span>
+                        </div>
+                      </div>
                     </div>
                     
-                    <h4 className="text-lg font-bold text-white mb-2">{task.topic}</h4>
-                    <p className="text-gray-300 mb-4">{task.description}</p>
-                    
-                    <div className="flex items-center space-x-6 text-sm text-gray-400">
-                      <div className="flex items-center space-x-1">
-                        <Clock className="w-4 h-4" />
-                        <span>{task.duration} min</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Star className="w-4 h-4 text-yellow-400" />
-                        <span>{task.stars} stars</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Target className="w-4 h-4" />
-                        <span>{task.type}</span>
-                      </div>
-                    </div>
+                    {!isCompleted && (
+                      <button
+                        onClick={() => handleTaskStart(task)}
+                        className="ml-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-all duration-200 hover:scale-105 group-hover:shadow-lg"
+                      >
+                        <Play className="w-4 h-4" />
+                        <span>Start</span>
+                      </button>
+                    )}
                   </div>
-                  
-                  <button
-                    onClick={() => handleTaskStart(task)}
-                    className="ml-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-all duration-200 hover:scale-105 group-hover:shadow-lg"
-                  >
-                    <Play className="w-4 h-4" />
-                    <span>Start</span>
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
