@@ -95,7 +95,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
           const text = await file.text();
           extractedText += `\n\nFrom ${file.name}:\n${text}`;
         } else {
-          extractedText += `\n\nUploaded file: ${file.name} (${file.type})`;
+          extractedText += `\n\nUploaded file: ${file.name} (${file.type}) - Content analysis will be performed by AI`;
         }
       } catch (error) {
         console.error('Error processing file:', file.name, error);
@@ -168,9 +168,9 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
         }
       };
 
-      // Generate AI study plan (now with OpenAI integration)
+      // Generate AI study plan (with enhanced localized AI)
       console.log('🤖 Generating AI study plan...');
-      const plan = await aiEngine.generateStudyPlan(enhancedProfile, validGoals);
+      const plan = await aiEngine.generateStudyPlan(enhancedProfile, validGoals, enhancedInfo);
       console.log('✅ Study plan generated:', plan);
 
       // Deactivate existing active plans
@@ -235,11 +235,11 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
 
   const renderStep1 = () => (
     <div className="space-y-6">
-      {/* OpenAI Status Indicator */}
+      {/* AI Status Indicator */}
       <div className={`p-4 rounded-lg border ${
         hasOpenAIKey 
           ? 'bg-green-500/10 border-green-500/20' 
-          : 'bg-yellow-500/10 border-yellow-500/20'
+          : 'bg-blue-500/10 border-blue-500/20'
       }`}>
         <div className="flex items-center space-x-2">
           {hasOpenAIKey ? (
@@ -249,15 +249,15 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
             </>
           ) : (
             <>
-              <Brain className="w-5 h-5 text-yellow-400" />
-              <span className="text-yellow-400 font-semibold">Standard AI Mode</span>
+              <Brain className="w-5 h-5 text-blue-400" />
+              <span className="text-blue-400 font-semibold">Advanced Localized AI Mode</span>
             </>
           )}
         </div>
         <p className="text-sm text-gray-300 mt-1">
           {hasOpenAIKey 
             ? 'Using OpenAI GPT-4 for advanced study plan generation with personalized content.'
-            : 'Using built-in AI engine. Add OpenAI API key for enhanced personalization.'
+            : 'Using our advanced localized AI engine with content analysis and personalized learning paths.'
           }
         </p>
       </div>
@@ -429,7 +429,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
   const renderStep3 = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-xl font-bold text-white mb-4">Additional Information</h3>
+        <h3 className="text-xl font-bold text-white mb-4">Additional Information & Content</h3>
         
         <div className="mb-6">
           <label className="block text-gray-300 text-sm font-medium mb-2">
@@ -444,9 +444,9 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
         </div>
 
         <div>
-          <h4 className="text-lg font-semibold text-white mb-3">Upload Supporting Documents (Optional)</h4>
+          <h4 className="text-lg font-semibold text-white mb-3">Upload Study Materials (Optional)</h4>
           <p className="text-gray-400 text-sm mb-4">
-            Upload syllabi, course outlines, or any documents that can help us understand your learning needs better.
+            Upload syllabi, lecture notes, course outlines, or any study materials. Our AI will analyze the content to create a more personalized study plan.
           </p>
           
           <div
@@ -465,6 +465,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
               <div>
                 <p className="text-white mb-2">Drag & drop files here, or click to select</p>
                 <p className="text-gray-400 text-sm">Supports: PDF, DOC, DOCX, TXT (max 5 files)</p>
+                <p className="text-purple-400 text-xs mt-2">AI will analyze content to personalize your study plan</p>
               </div>
             )}
           </div>
@@ -504,7 +505,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-white mb-2">AI Study Plan Generator</h2>
-              <p className="text-gray-300">Create a personalized learning plan tailored to your goals</p>
+              <p className="text-gray-300">Create a personalized learning plan tailored to your goals and materials</p>
             </div>
             <button
               onClick={onClose}

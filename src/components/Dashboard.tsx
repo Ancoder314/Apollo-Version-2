@@ -21,7 +21,8 @@ import {
   Headphones,
   PenTool,
   MessageSquare,
-  Plus
+  Plus,
+  Lock
 } from 'lucide-react';
 import InteractiveStudySession from './InteractiveStudySession';
 import StudyPlanGenerator from './StudyPlanGenerator';
@@ -433,18 +434,50 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
                 action.disabled ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+              <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform relative`}>
                 <Icon className="w-6 h-6 text-white" />
+                {action.disabled && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center">
+                    <Lock className="w-3 h-3 text-white" />
+                  </div>
+                )}
               </div>
               <h3 className="text-white font-semibold mb-2">{action.label}</h3>
               <p className="text-gray-400 text-sm">{action.description}</p>
               {action.disabled && (
-                <p className="text-yellow-400 text-xs mt-2">Create a study plan first</p>
+                <p className="text-yellow-400 text-xs mt-2 flex items-center space-x-1">
+                  <Lock className="w-3 h-3" />
+                  <span>Create a study plan first</span>
+                </p>
               )}
             </button>
           );
         })}
       </div>
+
+      {/* Study Plan Required Notice */}
+      {!currentStudyPlan && (
+        <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-xl p-6 border border-blue-500/20">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+              <Brain className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-white mb-2">Create Your AI Study Plan</h3>
+              <p className="text-gray-300 mb-4">
+                Unlock personalized study sessions, focus areas, quick reviews, and challenges by creating your AI-powered study plan.
+              </p>
+              <button
+                onClick={() => setShowPlanGenerator(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 hover:scale-105 flex items-center space-x-2"
+              >
+                <Brain className="w-5 h-5" />
+                <span>Get Started</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* AI-Recommended Study Sessions */}
       {studyTasks.length > 0 && (

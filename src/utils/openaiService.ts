@@ -17,6 +17,7 @@ export interface OpenAIStudyPlanRequest {
     additionalInfo?: string;
   };
   goals: string[];
+  uploadedContent?: string;
 }
 
 export interface OpenAIStudyPlanResponse {
@@ -53,7 +54,7 @@ export class OpenAIService {
       const prompt = this.createStudyPlanPrompt(request);
       
       const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -65,7 +66,7 @@ export class OpenAIService {
           }
         ],
         temperature: 0.7,
-        max_tokens: 3000
+        max_tokens: 4000
       });
 
       const response = completion.choices[0]?.message?.content;
@@ -104,7 +105,7 @@ Create engaging content including:
 Format as JSON with structured content for an interactive learning session.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -116,7 +117,7 @@ Format as JSON with structured content for an interactive learning session.`;
           }
         ],
         temperature: 0.8,
-        max_tokens: 2000
+        max_tokens: 3000
       });
 
       const response = completion.choices[0]?.message?.content;
@@ -146,6 +147,11 @@ STUDENT PROFILE:
 LEARNING GOALS:
 ${request.goals.map((goal, index) => `${index + 1}. ${goal}`).join('\n')}
 
+${request.uploadedContent ? `
+UPLOADED CONTENT/NOTES:
+${request.uploadedContent}
+` : ''}
+
 REQUIREMENTS:
 1. Create a study plan that addresses the weak areas while maintaining strong areas
 2. Adapt content delivery to the specified learning style
@@ -154,6 +160,7 @@ REQUIREMENTS:
 5. Create weekly milestones with clear success criteria
 6. Provide personalized recommendations for study strategies
 7. Estimate confidence level (0-100) for plan success
+8. If uploaded content is provided, incorporate it into the study plan
 
 RESPONSE FORMAT (JSON):
 {
