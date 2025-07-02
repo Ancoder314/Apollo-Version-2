@@ -262,14 +262,14 @@ const Profile: React.FC<ProfileProps> = ({ userData, setUserData }) => {
           <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-700/50 p-6">
             <h3 className="text-lg font-bold text-white mb-4">Learning Path</h3>
             <div className="space-y-3">
-              {userData.weakAreas.map((area: string, index: number) => (
+              {(userData.weakAreas || []).map((area: string, index: number) => (
                 <div key={index} className="p-3 bg-red-500/10 rounded-lg border border-red-500/20">
                   <p className="text-white text-sm font-medium">{area}</p>
                   <p className="text-red-400 text-xs">Focus area - needs improvement</p>
                 </div>
               ))}
               
-              {userData.strongAreas.map((area: string, index: number) => (
+              {(userData.strongAreas || []).map((area: string, index: number) => (
                 <div key={index} className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
                   <p className="text-white text-sm font-medium">{area}</p>
                   <p className="text-green-400 text-xs">Strength - maintain proficiency</p>
