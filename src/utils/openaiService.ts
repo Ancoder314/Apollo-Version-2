@@ -51,14 +51,14 @@ export interface OpenAIStudyPlanResponse {
 export class OpenAIService {
   async generateStudyPlan(request: OpenAIStudyPlanRequest): Promise<OpenAIStudyPlanResponse> {
     try {
-      const prompt = this.createStudyPlanPrompt(request);
+      const prompt = this.createAPStudyPlanPrompt(request);
       
       const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
-            content: "You are an expert educational AI that creates personalized study plans. You analyze student profiles and generate comprehensive, actionable study plans with specific subjects, topics, timelines, and learning strategies. Always respond with valid JSON that matches the expected structure."
+            content: "You are an expert AP educational AI that creates personalized AP study plans. You analyze student profiles and generate comprehensive, actionable AP study plans with specific AP courses, topics, timelines, and learning strategies focused on AP exam success. Always respond with valid JSON that matches the expected structure."
           },
           {
             role: "user",
@@ -83,33 +83,33 @@ export class OpenAIService {
       return studyPlan;
     } catch (error) {
       console.error('OpenAI API Error:', error);
-      throw new Error(`Failed to generate study plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to generate AP study plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   async generateStudyContent(subject: string, topic: string, difficulty: string, learningStyle: string): Promise<any> {
     try {
-      const prompt = `Generate interactive study content for:
-Subject: ${subject}
+      const prompt = `Generate interactive AP study content for:
+AP Subject: ${subject}
 Topic: ${topic}
 Difficulty: ${difficulty}
 Learning Style: ${learningStyle}
 
-Create engaging content including:
-1. Key concepts explanation
-2. Practice questions with multiple choice options
-3. Real-world applications
-4. Learning objectives
-5. Assessment criteria
+Create engaging AP-focused content including:
+1. Key AP concepts explanation
+2. AP practice questions with multiple choice options
+3. Real-world applications relevant to AP exams
+4. AP learning objectives
+5. AP assessment criteria
 
-Format as JSON with structured content for an interactive learning session.`;
+Format as JSON with structured content for an interactive AP learning session.`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
-            content: "You are an expert educational content creator. Generate interactive, engaging study materials tailored to specific learning styles and difficulty levels."
+            content: "You are an expert AP educational content creator. Generate interactive, engaging AP study materials tailored to specific learning styles and difficulty levels for AP exam preparation."
           },
           {
             role: "user",
@@ -128,76 +128,77 @@ Format as JSON with structured content for an interactive learning session.`;
       return JSON.parse(response);
     } catch (error) {
       console.error('OpenAI Content Generation Error:', error);
-      throw new Error(`Failed to generate study content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to generate AP study content: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  private createStudyPlanPrompt(request: OpenAIStudyPlanRequest): string {
-    return `Create a comprehensive, personalized study plan for the following student:
+  private createAPStudyPlanPrompt(request: OpenAIStudyPlanRequest): string {
+    return `Create a comprehensive, personalized AP study plan for the following student:
 
 STUDENT PROFILE:
 - Name: ${request.userProfile.name}
 - Current Level: ${request.userProfile.level}
-- Weak Areas: ${request.userProfile.weakAreas.join(', ')}
-- Strong Areas: ${request.userProfile.strongAreas.join(', ')}
+- Weak AP Areas: ${request.userProfile.weakAreas.join(', ')}
+- Strong AP Areas: ${request.userProfile.strongAreas.join(', ')}
 - Learning Style: ${request.userProfile.learningStyle}
 - Daily Time Available: ${request.userProfile.timeAvailable} minutes
 - Additional Context: ${request.userProfile.additionalInfo || 'None provided'}
 
-LEARNING GOALS:
+AP LEARNING GOALS:
 ${request.goals.map((goal, index) => `${index + 1}. ${goal}`).join('\n')}
 
 ${request.uploadedContent ? `
-UPLOADED CONTENT/NOTES:
+UPLOADED AP CONTENT/NOTES:
 ${request.uploadedContent}
 ` : ''}
 
 REQUIREMENTS:
-1. Create a study plan that addresses the weak areas while maintaining strong areas
-2. Adapt content delivery to the specified learning style
-3. Provide realistic timelines based on available study time
-4. Include 3-5 subjects with specific topics and learning objectives
-5. Create weekly milestones with clear success criteria
-6. Provide personalized recommendations for study strategies
-7. Estimate confidence level (0-100) for plan success
-8. If uploaded content is provided, incorporate it into the study plan
+1. Create an AP study plan that addresses the weak areas while maintaining strong areas
+2. Focus EXCLUSIVELY on AP courses and AP exam preparation
+3. Adapt content delivery to the specified learning style
+4. Provide realistic timelines based on available study time
+5. Include 2-4 AP subjects with specific topics and learning objectives
+6. Create weekly milestones with clear AP success criteria
+7. Provide personalized recommendations for AP study strategies
+8. Estimate confidence level (0-100) for AP exam success
+9. If uploaded content is provided, incorporate it into the AP study plan
 
 RESPONSE FORMAT (JSON):
 {
-  "title": "Descriptive plan title",
-  "description": "Brief overview of the plan",
-  "duration": 30-90, // days
-  "difficulty": "Supportive/Balanced/Challenging",
+  "title": "Descriptive AP plan title",
+  "description": "Brief overview of the AP plan",
+  "duration": 30-120, // days
+  "difficulty": "AP Supportive/AP Balanced/AP Challenging",
   "subjects": [
     {
-      "name": "Subject name",
+      "name": "AP [Subject name]",
       "priority": "high/medium/low",
       "timeAllocation": 25-40, // percentage
       "topics": [
         {
-          "name": "Topic name",
+          "name": "AP Topic name",
           "difficulty": "Beginner/Intermediate/Advanced/Expert",
           "estimatedTime": 30-90, // minutes
-          "learningObjectives": ["objective1", "objective2"]
+          "learningObjectives": ["AP objective1", "AP objective2"]
         }
       ],
-      "reasoning": "Why this subject is included and prioritized"
+      "reasoning": "Why this AP subject is included and prioritized"
     }
   ],
   "milestones": [
     {
       "week": 1,
-      "title": "Milestone title",
-      "description": "What to achieve this week",
-      "successCriteria": ["criteria1", "criteria2"]
+      "title": "AP Milestone title",
+      "description": "What to achieve this week for AP success",
+      "successCriteria": ["AP criteria1", "AP criteria2"]
     }
   ],
-  "personalizedRecommendations": ["recommendation1", "recommendation2"],
-  "estimatedOutcome": "Expected results after completing the plan",
-  "confidence": 75-95 // percentage
+  "personalizedRecommendations": ["AP recommendation1", "AP recommendation2"],
+  "estimatedOutcome": "Expected AP exam results after completing the plan",
+  "confidence": 75-95 // percentage for AP exam success
 }
 
-Generate a detailed, actionable study plan that will help this student achieve their goals effectively.`;
+Generate a detailed, actionable AP study plan that will help this student achieve their AP exam goals effectively.`;
   }
 
   private validateStudyPlanResponse(response: any): void {

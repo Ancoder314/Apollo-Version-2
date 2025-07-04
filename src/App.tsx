@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Home, 
-  BookOpen, 
   BarChart3, 
   Star, 
   User, 
@@ -12,7 +11,6 @@ import {
   LogOut
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
-import StudySession from './components/StudySession';
 import Progress from './components/Progress';
 import Constellations from './components/Constellations';
 import Profile from './components/Profile';
@@ -33,8 +31,8 @@ function App() {
           <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Star className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Apollo Study</h1>
-          <p className="text-gray-300">Loading your learning journey...</p>
+          <h1 className="text-2xl font-bold text-white mb-2">Apollo AP Prep</h1>
+          <p className="text-gray-300">Loading your AP preparation journey...</p>
         </div>
       </div>
     );
@@ -47,9 +45,8 @@ function App() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'study', label: 'Study', icon: BookOpen },
     { id: 'progress', label: 'Progress', icon: BarChart3 },
-    { id: 'constellations', label: 'Constellations', icon: Star },
+    { id: 'achievements', label: 'Achievements', icon: Star },
     { id: 'profile', label: 'Profile', icon: User }
   ];
 
@@ -57,11 +54,9 @@ function App() {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard setShowTimer={setShowTimer} />;
-      case 'study':
-        return <StudySession userData={profile} setUserData={() => {}} />;
       case 'progress':
         return <Progress userData={profile} />;
-      case 'constellations':
+      case 'achievements':
         return <Constellations userData={profile} />;
       case 'profile':
         return <Profile userData={profile} setUserData={() => {}} />;
@@ -105,7 +100,7 @@ function App() {
                 <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                   <Star className="w-5 h-5 text-white" />
                 </div>
-                <h1 className="text-xl font-bold text-white">Apollo</h1>
+                <h1 className="text-xl font-bold text-white">Apollo AP Prep</h1>
               </div>
               
               <div className="flex items-center space-x-4">

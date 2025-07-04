@@ -57,8 +57,8 @@ const Auth: React.FC = () => {
           <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <Star className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Apollo Study</h1>
-          <p className="text-gray-300">AI-Powered Personalized Learning Platform</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Apollo AP Prep</h1>
+          <p className="text-gray-300">AI-Powered AP Course Preparation Platform</p>
         </div>
 
         {/* Auth Form */}
@@ -69,8 +69,8 @@ const Auth: React.FC = () => {
             </h2>
             <p className="text-gray-400">
               {isSignUp 
-                ? 'Start your personalized learning journey' 
-                : 'Continue your learning adventure'
+                ? 'Start your AP exam preparation journey' 
+                : 'Continue your AP preparation'
               }
             </p>
           </div>
@@ -178,8 +178,8 @@ const Auth: React.FC = () => {
             <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
               <Star className="w-4 h-4 text-purple-400" />
             </div>
-            <p className="text-white text-sm font-medium">AI Tutoring</p>
-            <p className="text-gray-400 text-xs">Personalized learning</p>
+            <p className="text-white text-sm font-medium">AP Courses</p>
+            <p className="text-gray-400 text-xs">All AP subjects</p>
           </div>
           <div className="bg-slate-800/40 backdrop-blur-sm rounded-lg p-4 border border-slate-700/30">
             <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -192,8 +192,8 @@ const Auth: React.FC = () => {
             <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
               <Star className="w-4 h-4 text-green-400" />
             </div>
-            <p className="text-white text-sm font-medium">Achievements</p>
-            <p className="text-gray-400 text-xs">Gamified learning</p>
+            <p className="text-white text-sm font-medium">Exam Prep</p>
+            <p className="text-gray-400 text-xs">Targeted practice</p>
           </div>
         </div>
       </div>

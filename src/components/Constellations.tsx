@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Award, Sparkles, Zap } from 'lucide-react';
+import { Star, Award, Sparkles, Zap, GraduationCap, Trophy, Target } from 'lucide-react';
 
 interface ConstellationsProps {
   userData: any;
@@ -9,15 +9,15 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
   const [selectedConstellation, setSelectedConstellation] = useState(null);
   const [animatedStars, setAnimatedStars] = useState(new Set());
 
-  const constellations = [
+  const apAchievements = [
     {
       id: 1,
-      name: 'The Scholar',
-      description: 'Complete 50 lessons across all subjects',
+      name: 'AP Scholar',
+      description: 'Complete 50 AP practice problems across all subjects',
       stars: 50,
       unlocked: userData.completedLessons >= 50,
       progress: Math.min(userData.completedLessons, 50),
-      reward: 'Exclusive "Scholar" badge',
+      reward: 'Exclusive "AP Scholar" badge',
       pattern: [
         { x: 20, y: 30, connected: true },
         { x: 40, y: 20, connected: true },
@@ -28,12 +28,12 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
     },
     {
       id: 2,
-      name: 'The Phoenix',
-      description: 'Maintain a 30-day study streak',
+      name: 'The Dedicated',
+      description: 'Maintain a 30-day AP study streak',
       stars: 75,
       unlocked: userData.currentStreak >= 30,
       progress: Math.min(userData.currentStreak, 30),
-      reward: 'Phoenix flame effect on profile',
+      reward: 'Golden flame effect on profile',
       pattern: [
         { x: 30, y: 15, connected: true },
         { x: 50, y: 10, connected: true },
@@ -47,12 +47,12 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
     },
     {
       id: 3,
-      name: 'The Explorer',
-      description: 'Study in 10 different subjects',
+      name: 'AP Explorer',
+      description: 'Study in 5 different AP subjects',
       stars: 100,
       unlocked: false,
-      progress: 5,
-      reward: 'Access to advanced AI tutor features',
+      progress: 3,
+      reward: 'Access to advanced AP tutor features',
       pattern: [
         { x: 25, y: 25, connected: true },
         { x: 75, y: 25, connected: true },
@@ -64,12 +64,12 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
     },
     {
       id: 4,
-      name: 'The Master',
-      description: 'Achieve 95% mastery in any subject',
+      name: 'AP Master',
+      description: 'Achieve 95% mastery in any AP subject',
       stars: 150,
       unlocked: false,
       progress: 89,
-      reward: 'Golden crown avatar decoration',
+      reward: 'Golden graduation cap avatar decoration',
       pattern: [
         { x: 50, y: 15, connected: true },
         { x: 35, y: 30, connected: true },
@@ -80,6 +80,28 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
         { x: 35, y: 60, connected: true },
         { x: 65, y: 60, connected: true },
         { x: 50, y: 75, connected: true }
+      ]
+    },
+    {
+      id: 5,
+      name: 'AP Exam Ready',
+      description: 'Complete 10 full AP practice exams',
+      stars: 200,
+      unlocked: false,
+      progress: 4,
+      reward: 'AP Exam Readiness Certificate',
+      pattern: [
+        { x: 50, y: 10, connected: true },
+        { x: 30, y: 25, connected: true },
+        { x: 70, y: 25, connected: true },
+        { x: 15, y: 40, connected: true },
+        { x: 50, y: 40, connected: true },
+        { x: 85, y: 40, connected: true },
+        { x: 30, y: 55, connected: true },
+        { x: 70, y: 55, connected: true },
+        { x: 40, y: 70, connected: true },
+        { x: 60, y: 70, connected: true },
+        { x: 50, y: 85, connected: true }
       ]
     }
   ];
@@ -101,16 +123,16 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const renderConstellation = (constellation: any) => {
-    const isUnlocked = constellation.unlocked;
-    const progressPercent = (constellation.progress / constellation.stars) * 100;
+  const renderConstellation = (achievement: any) => {
+    const isUnlocked = achievement.unlocked;
+    const progressPercent = (achievement.progress / achievement.stars) * 100;
     
     return (
       <svg viewBox="0 0 100 100" className="w-full h-full">
         {/* Connecting lines */}
-        {constellation.pattern.map((star: any, index: number) => {
-          if (index < constellation.pattern.length - 1) {
-            const nextStar = constellation.pattern[index + 1];
+        {achievement.pattern.map((star: any, index: number) => {
+          if (index < achievement.pattern.length - 1) {
+            const nextStar = achievement.pattern[index + 1];
             return (
               <line
                 key={`line-${index}`}
@@ -129,8 +151,8 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
         })}
         
         {/* Stars */}
-        {constellation.pattern.map((star: any, index: number) => {
-          const isStarUnlocked = index < (constellation.pattern.length * progressPercent / 100);
+        {achievement.pattern.map((star: any, index: number) => {
+          const isStarUnlocked = index < (achievement.pattern.length * progressPercent / 100);
           return (
             <g key={`star-${index}`}>
               <circle
@@ -161,12 +183,12 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
       {/* Header */}
       <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 rounded-xl p-6 border border-yellow-500/20">
         <div className="flex items-center space-x-3 mb-3">
-          <Sparkles className="w-8 h-8 text-yellow-400" />
-          <h2 className="text-2xl font-bold text-white">Constellation Rewards</h2>
+          <GraduationCap className="w-8 h-8 text-yellow-400" />
+          <h2 className="text-2xl font-bold text-white">AP Achievement Constellations</h2>
         </div>
         <p className="text-gray-300 mb-4">
-          Form beautiful constellations by earning stars through your learning journey. 
-          Each constellation unlocks special rewards and recognition.
+          Form beautiful constellations by earning stars through your AP learning journey. 
+          Each constellation unlocks special rewards and recognition for your AP success.
         </p>
         <div className="flex items-center space-x-6 text-sm">
           <div className="flex items-center space-x-2">
@@ -174,29 +196,29 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
             <span className="text-white">{userData.totalStars} stars collected</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Award className="w-4 h-4 text-purple-400" />
+            <Trophy className="w-4 h-4 text-purple-400" />
             <span className="text-white">
-              {constellations.filter(c => c.unlocked).length} constellations formed
+              {apAchievements.filter(c => c.unlocked).length} AP achievements unlocked
             </span>
           </div>
         </div>
       </div>
 
-      {/* Constellations Grid */}
+      {/* AP Achievements Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {constellations.map((constellation) => {
-          const progressPercent = (constellation.progress / constellation.stars) * 100;
-          const isUnlocked = constellation.unlocked;
+        {apAchievements.map((achievement) => {
+          const progressPercent = (achievement.progress / achievement.stars) * 100;
+          const isUnlocked = achievement.unlocked;
           
           return (
             <div
-              key={constellation.id}
+              key={achievement.id}
               className={`relative bg-slate-800/60 backdrop-blur-sm rounded-lg border transition-all duration-300 overflow-hidden ${
                 isUnlocked 
                   ? 'border-yellow-500/50 shadow-lg shadow-yellow-500/10' 
                   : 'border-slate-700/50 hover:border-purple-500/50'
               }`}
-              onClick={() => setSelectedConstellation(constellation)}
+              onClick={() => setSelectedConstellation(achievement)}
             >
               {/* Unlocked Effect */}
               {isUnlocked && (
@@ -209,9 +231,9 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
                     <h3 className={`text-xl font-bold mb-1 ${
                       isUnlocked ? 'text-yellow-300' : 'text-white'
                     }`}>
-                      {constellation.name}
+                      {achievement.name}
                     </h3>
-                    <p className="text-gray-400 text-sm">{constellation.description}</p>
+                    <p className="text-gray-400 text-sm">{achievement.description}</p>
                   </div>
                   {isUnlocked && (
                     <div className="flex items-center space-x-1 text-yellow-400">
@@ -223,7 +245,7 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
 
                 {/* Constellation Visualization */}
                 <div className="relative h-32 mb-4 bg-slate-900/50 rounded-lg p-4">
-                  {renderConstellation(constellation)}
+                  {renderConstellation(achievement)}
                 </div>
 
                 {/* Progress */}
@@ -231,7 +253,7 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-400">Progress</span>
                     <span className={isUnlocked ? 'text-yellow-400' : 'text-purple-400'}>
-                      {constellation.progress}/{constellation.stars}
+                      {achievement.progress}/{achievement.stars}
                     </span>
                   </div>
                   <div className="w-full bg-slate-700 rounded-full h-2">
@@ -250,8 +272,8 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
                 <div className="flex items-center space-x-3 p-3 bg-slate-700/30 rounded-lg">
                   <Award className={`w-5 h-5 ${isUnlocked ? 'text-yellow-400' : 'text-gray-400'}`} />
                   <div>
-                    <p className="text-sm font-medium text-white">Reward</p>
-                    <p className="text-xs text-gray-400">{constellation.reward}</p>
+                    <p className="text-sm font-medium text-white">AP Reward</p>
+                    <p className="text-xs text-gray-400">{achievement.reward}</p>
                   </div>
                 </div>
               </div>
@@ -260,11 +282,11 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
         })}
       </div>
 
-      {/* Sky Map - Decorative constellation background */}
+      {/* AP Sky Map - Decorative constellation background */}
       <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-700/50 p-6">
         <h3 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
           <Star className="w-5 h-5 text-yellow-400" />
-          <span>Your Star Map</span>
+          <span>Your AP Star Map</span>
         </h3>
         <div className="relative h-64 bg-gradient-to-b from-slate-900 to-purple-900/50 rounded-lg overflow-hidden">
           {/* Animated background stars */}
@@ -284,10 +306,10 @@ const Constellations: React.FC<ConstellationsProps> = ({ userData }) => {
           
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <Star className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
-              <p className="text-white text-lg font-semibold">Keep learning to light up the sky!</p>
+              <GraduationCap className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
+              <p className="text-white text-lg font-semibold">Keep studying to light up the AP sky!</p>
               <p className="text-gray-400 text-sm mt-1">
-                {userData.totalStars} stars collected • Next constellation at {constellations.find(c => !c.unlocked)?.stars || 0} progress
+                {userData.totalStars} stars collected • Next AP achievement at {apAchievements.find(c => !c.unlocked)?.stars || 0} progress
               </p>
             </div>
           </div>

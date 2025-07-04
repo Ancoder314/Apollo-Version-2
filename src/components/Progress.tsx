@@ -7,7 +7,9 @@ import {
   Star, 
   Award,
   BarChart3,
-  Activity
+  Activity,
+  GraduationCap,
+  BookOpen
 } from 'lucide-react';
 
 interface ProgressProps {
@@ -25,19 +27,19 @@ const Progress: React.FC<ProgressProps> = ({ userData }) => {
     { day: 'Sun', hours: 2.3, stars: 19 }
   ];
 
-  const subjectProgress = [
-    { subject: 'Mathematics', progress: 78, change: +12, color: 'from-blue-500 to-blue-600' },
-    { subject: 'Physics', progress: 89, change: +5, color: 'from-green-500 to-green-600' },
-    { subject: 'Chemistry', progress: 65, change: +18, color: 'from-purple-500 to-purple-600' },
-    { subject: 'Literature', progress: 92, change: +3, color: 'from-pink-500 to-pink-600' },
-    { subject: 'History', progress: 71, change: +8, color: 'from-yellow-500 to-yellow-600' }
+  const apSubjectProgress = [
+    { subject: 'AP Calculus AB', progress: 78, change: +12, color: 'from-blue-500 to-blue-600' },
+    { subject: 'AP Physics 1', progress: 89, change: +5, color: 'from-green-500 to-green-600' },
+    { subject: 'AP Chemistry', progress: 65, change: +18, color: 'from-purple-500 to-purple-600' },
+    { subject: 'AP Biology', progress: 92, change: +3, color: 'from-pink-500 to-pink-600' },
+    { subject: 'AP Computer Science A', progress: 71, change: +8, color: 'from-yellow-500 to-yellow-600' }
   ];
 
-  const achievements = [
-    { title: 'Study Streak Master', description: '15 day streak', icon: TrendingUp, color: 'text-green-400' },
-    { title: 'Night Owl', description: 'Studied past midnight 5 times', icon: Clock, color: 'text-purple-400' },
-    { title: 'Star Collector', description: 'Earned 200+ stars', icon: Star, color: 'text-yellow-400' },
-    { title: 'Subject Explorer', description: 'Completed lessons in 5 subjects', icon: Award, color: 'text-blue-400' }
+  const apAchievements = [
+    { title: 'AP Study Streak Master', description: '15 day streak', icon: TrendingUp, color: 'text-green-400' },
+    { title: 'Night Owl Scholar', description: 'Studied past midnight 5 times', icon: Clock, color: 'text-purple-400' },
+    { title: 'AP Star Collector', description: 'Earned 200+ stars', icon: Star, color: 'text-yellow-400' },
+    { title: 'AP Subject Explorer', description: 'Completed lessons in 5 AP subjects', icon: GraduationCap, color: 'text-blue-400' }
   ];
 
   const maxHours = Math.max(...weeklyData.map(d => d.hours));
@@ -47,15 +49,18 @@ const Progress: React.FC<ProgressProps> = ({ userData }) => {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-green-600/20 to-blue-600/20 rounded-xl p-6 border border-green-500/20">
-        <h2 className="text-2xl font-bold text-white mb-2">Progress Analytics</h2>
-        <p className="text-gray-300">Track your learning journey and celebrate your achievements</p>
+        <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
+          <GraduationCap className="w-6 h-6" />
+          <span>AP Progress Analytics</span>
+        </h2>
+        <p className="text-gray-300">Track your AP learning journey and celebrate your achievements</p>
       </div>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-gray-400 text-sm">Total Study Time</h3>
+            <h3 className="text-gray-400 text-sm">Total AP Study Time</h3>
             <Clock className="w-5 h-5 text-blue-400" />
           </div>
           <p className="text-3xl font-bold text-white">{Math.floor(userData.studyTime / 60)}<span className="text-lg text-gray-400">h</span></p>
@@ -64,7 +69,7 @@ const Progress: React.FC<ProgressProps> = ({ userData }) => {
 
         <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-gray-400 text-sm">Stars Collected</h3>
+            <h3 className="text-gray-400 text-sm">AP Stars Collected</h3>
             <Star className="w-5 h-5 text-yellow-400" />
           </div>
           <p className="text-3xl font-bold text-white">{userData.totalStars}</p>
@@ -73,8 +78,8 @@ const Progress: React.FC<ProgressProps> = ({ userData }) => {
 
         <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-gray-400 text-sm">Lessons Completed</h3>
-            <Target className="w-5 h-5 text-green-400" />
+            <h3 className="text-gray-400 text-sm">AP Sessions Completed</h3>
+            <BookOpen className="w-5 h-5 text-green-400" />
           </div>
           <p className="text-3xl font-bold text-white">{userData.completedLessons}</p>
           <p className="text-green-400 text-sm">+8 this week</p>
@@ -82,7 +87,7 @@ const Progress: React.FC<ProgressProps> = ({ userData }) => {
 
         <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-gray-400 text-sm">Current Streak</h3>
+            <h3 className="text-gray-400 text-sm">Current AP Streak</h3>
             <TrendingUp className="w-5 h-5 text-purple-400" />
           </div>
           <p className="text-3xl font-bold text-white">{userData.currentStreak}<span className="text-lg text-gray-400">d</span></p>
@@ -95,7 +100,7 @@ const Progress: React.FC<ProgressProps> = ({ userData }) => {
         <div className="p-6 border-b border-slate-700/50">
           <h3 className="text-xl font-bold text-white flex items-center space-x-2">
             <BarChart3 className="w-5 h-5" />
-            <span>Weekly Activity</span>
+            <span>Weekly AP Activity</span>
           </h3>
         </div>
         <div className="p-6">
@@ -123,7 +128,7 @@ const Progress: React.FC<ProgressProps> = ({ userData }) => {
           <div className="flex items-center justify-center space-x-6 mt-4 text-sm">
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-purple-500 rounded"></div>
-              <span className="text-gray-400">Study Hours</span>
+              <span className="text-gray-400">AP Study Hours</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-yellow-500 rounded"></div>
@@ -133,16 +138,16 @@ const Progress: React.FC<ProgressProps> = ({ userData }) => {
         </div>
       </div>
 
-      {/* Subject Progress */}
+      {/* AP Subject Progress */}
       <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-700/50">
         <div className="p-6 border-b border-slate-700/50">
           <h3 className="text-xl font-bold text-white flex items-center space-x-2">
             <Activity className="w-5 h-5" />
-            <span>Subject Progress</span>
+            <span>AP Subject Progress</span>
           </h3>
         </div>
         <div className="p-6 space-y-4">
-          {subjectProgress.map((subject, index) => (
+          {apSubjectProgress.map((subject, index) => (
             <div key={index} className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-white font-medium">{subject.subject}</span>
@@ -164,16 +169,16 @@ const Progress: React.FC<ProgressProps> = ({ userData }) => {
         </div>
       </div>
 
-      {/* Achievements */}
+      {/* AP Achievements */}
       <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-700/50">
         <div className="p-6 border-b border-slate-700/50">
           <h3 className="text-xl font-bold text-white flex items-center space-x-2">
             <Award className="w-5 h-5" />
-            <span>Recent Achievements</span>
+            <span>Recent AP Achievements</span>
           </h3>
         </div>
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {achievements.map((achievement, index) => {
+          {apAchievements.map((achievement, index) => {
             const Icon = achievement.icon;
             return (
               <div key={index} className="flex items-center space-x-4 p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">

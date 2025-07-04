@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Home, 
-  BookOpen, 
   BarChart3, 
   Star, 
   User, 
@@ -17,7 +16,9 @@ import {
   Lock,
   CheckCircle,
   Plus,
-  Sparkles
+  Sparkles,
+  BookOpen,
+  GraduationCap
 } from 'lucide-react';
 import InteractiveStudySession from './InteractiveStudySession';
 import StudyPlanGenerator from './StudyPlanGenerator';
@@ -55,7 +56,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
 
   useEffect(() => {
     if (currentStudyPlan) {
-      generateAIRecommendedTasks();
+      generateAPRecommendedTasks();
     }
   }, [currentStudyPlan]);
 
@@ -144,24 +145,24 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     }
   };
 
-  const generateAIRecommendedTasks = () => {
+  const generateAPRecommendedTasks = () => {
     if (!currentStudyPlan || !profile) return;
 
     const tasks: any[] = [];
     
-    // Generate tasks based on study plan subjects
+    // Generate tasks based on AP study plan subjects
     currentStudyPlan.subjects.forEach((subject, index) => {
       subject.topics.forEach((topic, topicIndex) => {
         if (tasks.length < 6) { // Limit to 6 tasks
           tasks.push({
             id: `${index}-${topicIndex}`,
-            type: getTaskType(subject.name, topic.difficulty),
+            type: getAPTaskType(subject.name, topic.difficulty),
             subject: subject.name,
             topic: topic.name,
             difficulty: topic.difficulty,
             duration: topic.estimatedTime,
-            stars: calculateStars(topic.difficulty),
-            description: `Master ${topic.name} with ${getTaskType(subject.name, topic.difficulty).toLowerCase()}`,
+            stars: calculateAPStars(topic.difficulty),
+            description: `Master ${topic.name} with ${getAPTaskType(subject.name, topic.difficulty).toLowerCase()}`,
             aiRecommended: subject.priority === 'high',
             learningStyle: profile.learning_style || 'visual',
             prerequisites: topic.prerequisites || [],
@@ -176,28 +177,34 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     setStudyTasks(tasks);
   };
 
-  const getTaskType = (subject: string, difficulty: string) => {
-    const types = {
-      'Mathematics': ['Adaptive Practice', 'Problem Solving', 'Concept Mastery'],
-      'Physics': ['Interactive Simulation', 'Lab Experiment', 'Theory Application'],
-      'Chemistry': ['Visual Learning + 3D Modeling', 'Reaction Mechanisms', 'Lab Practice'],
-      'Biology': ['Interactive Diagrams', 'Case Studies', 'Lab Analysis'],
-      'Computer Science': ['Coding Practice', 'Algorithm Design', 'Project Building'],
-      'default': ['Adaptive Practice', 'Interactive Learning', 'Concept Review']
+  const getAPTaskType = (subject: string, difficulty: string) => {
+    const apTypes = {
+      'AP Calculus AB': ['Derivative Practice', 'Integration Problems', 'Limit Analysis'],
+      'AP Calculus BC': ['Series Convergence', 'Parametric Equations', 'Advanced Integration'],
+      'AP Physics 1': ['Kinematics Lab', 'Force Analysis', 'Energy Conservation'],
+      'AP Physics 2': ['Circuit Analysis', 'Thermodynamics', 'Wave Properties'],
+      'AP Chemistry': ['Stoichiometry Practice', 'Equilibrium Problems', 'Kinetics Analysis'],
+      'AP Biology': ['Cell Structure Study', 'Genetics Problems', 'Evolution Analysis'],
+      'AP Computer Science A': ['Algorithm Design', 'Object-Oriented Programming', 'Data Structure Implementation'],
+      'AP Statistics': ['Probability Calculations', 'Hypothesis Testing', 'Regression Analysis'],
+      'AP English Language': ['Rhetorical Analysis', 'Argument Construction', 'Synthesis Writing'],
+      'AP English Literature': ['Poetry Analysis', 'Literary Interpretation', 'Thematic Essays'],
+      'AP US History': ['Document Analysis', 'Historical Argumentation', 'Period Synthesis'],
+      'default': ['AP Practice Problems', 'Concept Review', 'Exam Preparation']
     };
     
-    const subjectTypes = types[subject as keyof typeof types] || types.default;
+    const subjectTypes = apTypes[subject as keyof typeof apTypes] || apTypes.default;
     return subjectTypes[Math.floor(Math.random() * subjectTypes.length)];
   };
 
-  const calculateStars = (difficulty: string) => {
+  const calculateAPStars = (difficulty: string) => {
     const starMap = {
-      'Beginner': 8,
-      'Intermediate': 12,
-      'Advanced': 18,
-      'Expert': 25
+      'Beginner': 10,
+      'Intermediate': 15,
+      'Advanced': 22,
+      'Expert': 30
     };
-    return starMap[difficulty as keyof typeof starMap] || 10;
+    return starMap[difficulty as keyof typeof starMap] || 12;
   };
 
   const handleTaskStart = (task: any) => {
@@ -280,7 +287,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   const generatePersonalizedFocusTask = () => {
     if (!currentStudyPlan) return null;
     
-    // Find high priority subjects (weak areas)
+    // Find high priority AP subjects (weak areas)
     const focusSubjects = currentStudyPlan.subjects.filter(s => s.priority === 'high');
     if (focusSubjects.length === 0) return null;
 
@@ -289,13 +296,13 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     
     return {
       id: 'focus-task',
-      type: 'Focus Session',
+      type: 'AP Focus Session',
       subject: subject.name,
       topic: topic?.name || 'Foundation Review',
       difficulty: 'Adaptive',
       duration: 45,
-      stars: 20,
-      description: `Targeted practice for your weak area: ${subject.name}. ${subject.reasoning}`,
+      stars: 25,
+      description: `Targeted AP practice for your weak area: ${subject.name}. ${subject.reasoning}`,
       aiRecommended: true,
       learningStyle: profile?.learning_style || 'visual',
       prerequisites: topic?.prerequisites || [],
@@ -323,17 +330,17 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     
     return {
       id: 'review-task',
-      type: 'Quick Review',
-      subject: 'Mixed Review',
-      topic: 'Recent Concepts',
+      type: 'AP Quick Review',
+      subject: 'Mixed AP Review',
+      topic: 'Recent AP Concepts',
       difficulty: 'Intermediate',
-      duration: 20,
-      stars: 10,
-      description: `Quick review of recently studied concepts: ${recentTopics.join(', ')}`,
+      duration: 25,
+      stars: 15,
+      description: `Quick review of recently studied AP concepts: ${recentTopics.join(', ')}`,
       aiRecommended: true,
       learningStyle: profile?.learning_style || 'visual',
       prerequisites: [],
-      learningObjectives: ['Review and reinforce recent learning'],
+      learningObjectives: ['Review and reinforce recent AP learning'],
       resources: [],
       assessments: [],
       reviewTopics: recentTopics,
@@ -344,7 +351,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   const generatePersonalizedChallenge = () => {
     if (!currentStudyPlan) return null;
     
-    // Find advanced topics from study plan
+    // Find advanced topics from AP study plan
     const challengeSubjects = currentStudyPlan.subjects.filter(s => 
       s.topics.some(t => t.difficulty === 'Advanced' || t.difficulty === 'Expert')
     );
@@ -358,13 +365,13 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     
     return {
       id: 'challenge-task',
-      type: 'Challenge Mode',
+      type: 'AP Challenge Mode',
       subject: subject.name,
-      topic: advancedTopic?.name || 'Advanced Problems',
+      topic: advancedTopic?.name || 'Advanced AP Problems',
       difficulty: 'Expert',
       duration: 60,
-      stars: 30,
-      description: `Challenge yourself with advanced ${subject.name} problems. Test your mastery!`,
+      stars: 35,
+      description: `Challenge yourself with advanced ${subject.name} AP problems. Test your mastery!`,
       aiRecommended: true,
       learningStyle: profile?.learning_style || 'visual',
       prerequisites: advancedTopic?.prerequisites || [],
@@ -402,40 +409,40 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   const quickActions = [
     { 
       icon: Brain, 
-      label: 'AI Study Plan', 
+      label: 'AI AP Study Plan', 
       color: 'from-purple-500 to-pink-500',
       action: () => setShowPlanGenerator(true),
-      description: currentStudyPlan ? 'Update your study plan' : 'Get a personalized study plan powered by AI',
+      description: currentStudyPlan ? 'Update your AP study plan' : 'Get a personalized AP study plan powered by AI',
       disabled: false
     },
     { 
       icon: Target, 
-      label: 'Focus Areas', 
+      label: 'AP Focus Areas', 
       color: 'from-blue-500 to-cyan-500',
       action: handleFocusAreas,
       description: currentStudyPlan 
-        ? `Work on ${currentStudyPlan.subjects.filter(s => s.priority === 'high')[0]?.name || 'your weak areas'}`
-        : 'Work on your identified weak areas',
+        ? `Work on ${currentStudyPlan.subjects.filter(s => s.priority === 'high')[0]?.name || 'your weak AP areas'}`
+        : 'Work on your identified weak AP areas',
       disabled: !currentStudyPlan
     },
     { 
       icon: Zap, 
-      label: 'Quick Review', 
+      label: 'AP Quick Review', 
       color: 'from-green-500 to-emerald-500',
       action: handleQuickReview,
       description: currentStudyPlan 
-        ? 'Review recently completed topics and concepts'
-        : 'Review recent topics and concepts',
+        ? 'Review recently completed AP topics and concepts'
+        : 'Review recent AP topics and concepts',
       disabled: !currentStudyPlan
     },
     { 
       icon: Award, 
-      label: 'Challenges', 
+      label: 'AP Challenges', 
       color: 'from-orange-500 to-red-500',
       action: handleChallenges,
       description: currentStudyPlan 
-        ? `Advanced ${currentStudyPlan.subjects.find(s => s.topics.some(t => t.difficulty === 'Advanced'))?.name || 'problem'} sets`
-        : 'Take on advanced problem sets',
+        ? `Advanced ${currentStudyPlan.subjects.find(s => s.topics.some(t => t.difficulty === 'Advanced'))?.name || 'AP problem'} sets`
+        : 'Take on advanced AP problem sets',
       disabled: !currentStudyPlan
     }
   ];
@@ -449,18 +456,18 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-white mb-2">
-              Welcome back, {profile.name}! 🚀
+              Welcome back, {profile.name}! 🎓
             </h2>
             <p className="text-gray-300">
               {currentStudyPlan 
-                ? `Continue with your "${currentStudyPlan.title}" study plan`
-                : 'Ready to create your personalized AI study plan?'
+                ? `Continue with your "${currentStudyPlan.title}" AP study plan`
+                : 'Ready to create your personalized AP study plan?'
               }
             </p>
             {currentStudyPlan && (
               <div className="mt-2 flex items-center space-x-4 text-sm">
                 <span className="text-purple-400">
-                  {currentStudyPlan.subjects.length} subjects • {currentStudyPlan.duration} days
+                  {currentStudyPlan.subjects.length} AP courses • {currentStudyPlan.duration} days
                 </span>
                 <span className="text-green-400">
                   {currentStudyPlan.confidence}% confidence
@@ -503,7 +510,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
               {action.disabled && (
                 <p className="text-yellow-400 text-xs mt-2 flex items-center space-x-1">
                   <Lock className="w-3 h-3" />
-                  <span>Create a study plan first</span>
+                  <span>Create an AP study plan first</span>
                 </p>
               )}
             </button>
@@ -516,12 +523,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
         <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-xl p-6 border border-blue-500/20">
           <div className="flex items-center space-x-4">
             <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-              <Brain className="w-6 h-6 text-white" />
+              <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-xl font-bold text-white mb-2">Create Your AI Study Plan</h3>
+              <h3 className="text-xl font-bold text-white mb-2">Create Your AI AP Study Plan</h3>
               <p className="text-gray-300 mb-4">
-                Unlock personalized study sessions, focus areas, quick reviews, and challenges by creating your AI-powered study plan.
+                Unlock personalized AP study sessions, focus areas, quick reviews, and challenges by creating your AI-powered AP study plan.
               </p>
               <button
                 onClick={() => setShowPlanGenerator(true)}
@@ -535,17 +542,17 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
         </div>
       )}
 
-      {/* AI-Recommended Study Sessions */}
+      {/* AI-Recommended AP Study Sessions */}
       {studyTasks.length > 0 && (
         <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-700/50">
           <div className="p-6 border-b border-slate-700/50">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-white flex items-center space-x-2">
                 <Sparkles className="w-5 h-5 text-purple-400" />
-                <span>AI-Recommended Study Sessions</span>
+                <span>AI-Recommended AP Study Sessions</span>
               </h3>
               <span className="text-sm text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full">
-                Personalized for you
+                Personalized for AP success
               </span>
             </div>
           </div>
@@ -640,7 +647,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Today's Focus</h3>
+            <h3 className="text-lg font-semibold text-white">Today's AP Focus</h3>
             <Target className="w-5 h-5 text-green-400" />
           </div>
           <div className="space-y-3">
@@ -657,7 +664,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
               />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-300">Lessons</span>
+              <span className="text-gray-300">AP Sessions</span>
               <span className="text-white font-semibold">
                 {dailyProgress.lessonsCompleted} / {dailyProgress.targetLessons}
               </span>
@@ -673,7 +680,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
 
         <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Weekly Streak</h3>
+            <h3 className="text-lg font-semibold text-white">AP Streak</h3>
             <TrendingUp className="w-5 h-5 text-purple-400" />
           </div>
           <div className="text-center">
@@ -694,7 +701,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
 
         <div className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Next Milestone</h3>
+            <h3 className="text-lg font-semibold text-white">Next AP Milestone</h3>
             <Award className="w-5 h-5 text-yellow-400" />
           </div>
           <div className="space-y-3">

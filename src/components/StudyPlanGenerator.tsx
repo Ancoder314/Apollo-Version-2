@@ -12,7 +12,8 @@ import {
   Loader,
   CheckCircle,
   AlertCircle,
-  Zap
+  Zap,
+  GraduationCap
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { useAuth } from '../hooks/useAuth';
@@ -115,7 +116,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
     setError('');
     
     try {
-      console.log('🚀 Starting study plan generation...');
+      console.log('🚀 Starting AP study plan generation...');
       
       // Validate form data
       const validGoals = formData.goals.filter(goal => goal.trim());
@@ -123,7 +124,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
       const validStrongAreas = formData.strongAreas.filter(area => area.trim());
       
       if (validGoals.length === 0) {
-        setError('Please provide at least one learning goal.');
+        setError('Please provide at least one AP learning goal.');
         setLoading(false);
         return;
       }
@@ -169,9 +170,9 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
       };
 
       // Generate AI study plan (with enhanced localized AI)
-      console.log('🤖 Generating AI study plan...');
+      console.log('🤖 Generating AI AP study plan...');
       const plan = await aiEngine.generateStudyPlan(enhancedProfile, validGoals, enhancedInfo);
-      console.log('✅ Study plan generated:', plan);
+      console.log('✅ AP study plan generated:', plan);
 
       // Deactivate existing active plans
       console.log('🔄 Deactivating existing plans...');
@@ -182,7 +183,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
         .eq('is_active', true);
 
       // Save to database
-      console.log('💾 Saving study plan to database...');
+      console.log('💾 Saving AP study plan to database...');
       const { data, error: insertError } = await supabase
         .from('study_plans')
         .insert({
@@ -205,10 +206,10 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
 
       if (insertError) {
         console.error('❌ Database insert error:', insertError);
-        throw new Error(`Failed to save study plan: ${insertError.message}`);
+        throw new Error(`Failed to save AP study plan: ${insertError.message}`);
       }
 
-      console.log('✅ Study plan saved successfully:', data);
+      console.log('✅ AP study plan saved successfully:', data);
 
       // Update user profile with new preferences
       console.log('👤 Updating user profile...');
@@ -219,12 +220,12 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
         study_goals: validGoals
       });
 
-      console.log('🎉 Study plan generation completed successfully');
+      console.log('🎉 AP study plan generation completed successfully');
       onPlanGenerated({ ...plan, id: data.id });
       onClose();
     } catch (error: any) {
-      console.error('❌ Error generating study plan:', error);
-      setError(error.message || 'Failed to generate study plan. Please try again.');
+      console.error('❌ Error generating AP study plan:', error);
+      setError(error.message || 'Failed to generate AP study plan. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -250,21 +251,21 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
           ) : (
             <>
               <Brain className="w-5 h-5 text-blue-400" />
-              <span className="text-blue-400 font-semibold">Advanced Localized AI Mode</span>
+              <span className="text-blue-400 font-semibold">Advanced AP AI Mode</span>
             </>
           )}
         </div>
         <p className="text-sm text-gray-300 mt-1">
           {hasOpenAIKey 
-            ? 'Using OpenAI GPT-4 for advanced study plan generation with personalized content.'
-            : 'Using our advanced localized AI engine with content analysis and personalized learning paths.'
+            ? 'Using OpenAI GPT-4 for advanced AP study plan generation with personalized content.'
+            : 'Using our advanced localized AI engine specialized for AP course preparation and personalized learning paths.'
           }
         </p>
       </div>
 
       <div>
-        <h3 className="text-xl font-bold text-white mb-4">Learning Goals</h3>
-        <p className="text-gray-400 mb-4">What do you want to achieve? Be specific about your learning objectives.</p>
+        <h3 className="text-xl font-bold text-white mb-4">AP Learning Goals</h3>
+        <p className="text-gray-400 mb-4">What AP courses do you want to master? Be specific about your AP exam objectives.</p>
         
         {formData.goals.map((goal, index) => (
           <div key={index} className="flex items-center space-x-2 mb-3">
@@ -272,7 +273,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
               type="text"
               value={goal}
               onChange={(e) => updateField('goals', index, e.target.value)}
-              placeholder="e.g., Master calculus for engineering applications"
+              placeholder="e.g., Master AP Calculus AB for 5 on exam"
               className="flex-1 bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-purple-500 focus:outline-none"
             />
             {formData.goals.length > 1 && (
@@ -291,20 +292,20 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
           className="flex items-center space-x-2 text-purple-400 hover:text-purple-300 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          <span>Add another goal</span>
+          <span>Add another AP goal</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h4 className="text-lg font-semibold text-white mb-3">Areas to Improve</h4>
+          <h4 className="text-lg font-semibold text-white mb-3">AP Areas to Improve</h4>
           {formData.weakAreas.map((area, index) => (
             <div key={index} className="flex items-center space-x-2 mb-3">
               <input
                 type="text"
                 value={area}
                 onChange={(e) => updateField('weakAreas', index, e.target.value)}
-                placeholder="e.g., Organic Chemistry"
+                placeholder="e.g., AP Chemistry Equilibrium"
                 className="flex-1 bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 focus:border-red-500 focus:outline-none"
               />
               {formData.weakAreas.length > 1 && (
@@ -322,19 +323,19 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
             className="flex items-center space-x-1 text-red-400 hover:text-red-300 text-sm"
           >
             <Plus className="w-3 h-3" />
-            <span>Add weak area</span>
+            <span>Add weak AP area</span>
           </button>
         </div>
 
         <div>
-          <h4 className="text-lg font-semibold text-white mb-3">Strong Areas</h4>
+          <h4 className="text-lg font-semibold text-white mb-3">Strong AP Areas</h4>
           {formData.strongAreas.map((area, index) => (
             <div key={index} className="flex items-center space-x-2 mb-3">
               <input
                 type="text"
                 value={area}
                 onChange={(e) => updateField('strongAreas', index, e.target.value)}
-                placeholder="e.g., Physics"
+                placeholder="e.g., AP Physics Mechanics"
                 className="flex-1 bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 focus:border-green-500 focus:outline-none"
               />
               {formData.strongAreas.length > 1 && (
@@ -352,7 +353,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
             className="flex items-center space-x-1 text-green-400 hover:text-green-300 text-sm"
           >
             <Plus className="w-3 h-3" />
-            <span>Add strong area</span>
+            <span>Add strong AP area</span>
           </button>
         </div>
       </div>
@@ -362,7 +363,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
   const renderStep2 = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-xl font-bold text-white mb-4">Learning Preferences</h3>
+        <h3 className="text-xl font-bold text-white mb-4">AP Learning Preferences</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -374,16 +375,16 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
               onChange={(e) => setFormData(prev => ({ ...prev, learningStyle: e.target.value }))}
               className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-purple-500 focus:outline-none"
             >
-              <option value="visual">Visual (diagrams, charts, images)</option>
-              <option value="auditory">Auditory (lectures, discussions)</option>
-              <option value="kinesthetic">Kinesthetic (hands-on, interactive)</option>
-              <option value="reading">Reading/Writing (text-based)</option>
+              <option value="visual">Visual (diagrams, charts, AP graphs)</option>
+              <option value="auditory">Auditory (lectures, AP discussions)</option>
+              <option value="kinesthetic">Kinesthetic (hands-on, AP labs)</option>
+              <option value="reading">Reading/Writing (text-based AP content)</option>
             </select>
           </div>
 
           <div>
             <label className="block text-gray-300 text-sm font-medium mb-2">
-              Preferred Difficulty
+              Preferred AP Difficulty
             </label>
             <select
               value={formData.preferredDifficulty}
@@ -391,16 +392,16 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
               className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-purple-500 focus:outline-none"
             >
               <option value="adaptive">Adaptive (AI adjusts automatically)</option>
-              <option value="easy">Easy (build confidence)</option>
-              <option value="medium">Medium (balanced challenge)</option>
-              <option value="hard">Hard (maximum challenge)</option>
+              <option value="easy">Easy (build AP confidence)</option>
+              <option value="medium">Medium (balanced AP challenge)</option>
+              <option value="hard">Hard (maximum AP challenge)</option>
             </select>
           </div>
         </div>
 
         <div>
           <label className="block text-gray-300 text-sm font-medium mb-2">
-            Daily Study Time Available (minutes)
+            Daily AP Study Time Available (minutes)
           </label>
           <div className="flex items-center space-x-4">
             <input
@@ -417,9 +418,9 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
             </div>
           </div>
           <p className="text-gray-400 text-sm mt-2">
-            {formData.timeAvailable < 30 ? 'Quick sessions' : 
-             formData.timeAvailable < 60 ? 'Standard sessions' :
-             formData.timeAvailable < 120 ? 'Extended sessions' : 'Intensive sessions'}
+            {formData.timeAvailable < 30 ? 'Quick AP sessions' : 
+             formData.timeAvailable < 60 ? 'Standard AP sessions' :
+             formData.timeAvailable < 120 ? 'Extended AP sessions' : 'Intensive AP sessions'}
           </p>
         </div>
       </div>
@@ -429,24 +430,24 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
   const renderStep3 = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-xl font-bold text-white mb-4">Additional Information & Content</h3>
+        <h3 className="text-xl font-bold text-white mb-4">Additional AP Information & Content</h3>
         
         <div className="mb-6">
           <label className="block text-gray-300 text-sm font-medium mb-2">
-            Tell us more about your learning context
+            Tell us more about your AP preparation context
           </label>
           <textarea
             value={formData.additionalInfo}
             onChange={(e) => setFormData(prev => ({ ...prev, additionalInfo: e.target.value }))}
-            placeholder="e.g., I'm preparing for medical school entrance exams, struggling with time management, prefer evening study sessions..."
+            placeholder="e.g., I'm taking AP Calculus AB and AP Physics 1 this year, struggling with time management, prefer evening study sessions, aiming for 5s on both exams..."
             className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-purple-500 focus:outline-none h-32 resize-none"
           />
         </div>
 
         <div>
-          <h4 className="text-lg font-semibold text-white mb-3">Upload Study Materials (Optional)</h4>
+          <h4 className="text-lg font-semibold text-white mb-3">Upload AP Study Materials (Optional)</h4>
           <p className="text-gray-400 text-sm mb-4">
-            Upload syllabi, lecture notes, course outlines, or any study materials. Our AI will analyze the content to create a more personalized study plan.
+            Upload AP syllabi, course outlines, practice exams, or any AP study materials. Our AI will analyze the content to create a more personalized AP study plan.
           </p>
           
           <div
@@ -460,19 +461,19 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
             <input {...getInputProps()} />
             <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             {isDragActive ? (
-              <p className="text-purple-400">Drop the files here...</p>
+              <p className="text-purple-400">Drop the AP files here...</p>
             ) : (
               <div>
-                <p className="text-white mb-2">Drag & drop files here, or click to select</p>
+                <p className="text-white mb-2">Drag & drop AP files here, or click to select</p>
                 <p className="text-gray-400 text-sm">Supports: PDF, DOC, DOCX, TXT (max 5 files)</p>
-                <p className="text-purple-400 text-xs mt-2">AI will analyze content to personalize your study plan</p>
+                <p className="text-purple-400 text-xs mt-2">AI will analyze AP content to personalize your study plan</p>
               </div>
             )}
           </div>
 
           {formData.uploadedFiles.length > 0 && (
             <div className="mt-4 space-y-2">
-              <h5 className="text-white font-medium">Uploaded Files:</h5>
+              <h5 className="text-white font-medium">Uploaded AP Files:</h5>
               {formData.uploadedFiles.map((file, index) => (
                 <div key={index} className="flex items-center justify-between bg-slate-700/50 rounded-lg p-3">
                   <div className="flex items-center space-x-3">
@@ -504,8 +505,11 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
         <div className="p-6 border-b border-slate-700/50 bg-gradient-to-r from-purple-600/10 to-pink-600/10">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-white mb-2">AI Study Plan Generator</h2>
-              <p className="text-gray-300">Create a personalized learning plan tailored to your goals and materials</p>
+              <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
+                <GraduationCap className="w-6 h-6" />
+                <span>AI AP Study Plan Generator</span>
+              </h2>
+              <p className="text-gray-300">Create a personalized AP learning plan tailored to your exam goals and materials</p>
             </div>
             <button
               onClick={onClose}
@@ -585,12 +589,12 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
                   {loading ? (
                     <>
                       <Loader className="w-4 h-4 animate-spin" />
-                      <span>Generating Plan...</span>
+                      <span>Generating AP Plan...</span>
                     </>
                   ) : (
                     <>
                       {hasOpenAIKey ? <Zap className="w-4 h-4" /> : <Brain className="w-4 h-4" />}
-                      <span>Generate AI Study Plan</span>
+                      <span>Generate AI AP Study Plan</span>
                     </>
                   )}
                 </button>
