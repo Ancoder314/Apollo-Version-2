@@ -31,8 +31,11 @@ import {
   RefreshCw,
   Shuffle,
   Filter,
-  Search
+  Search,
+  GraduationCap
 } from 'lucide-react';
+import { aiEngine } from '../utils/aiEngine';
+import { useAuth } from '../hooks/useAuth';
 
 interface StudySessionProps {
   task: any;
@@ -41,6 +44,7 @@ interface StudySessionProps {
 }
 
 const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, onComplete }) => {
+  const { profile } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<{[key: number]: any}>({});
   const [showHint, setShowHint] = useState(false);
@@ -51,7 +55,7 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
   const [earnedStars, setEarnedStars] = useState(0);
   const [studyMode, setStudyMode] = useState('guided'); // guided, practice, challenge, adaptive
   const [difficultyLevel, setDifficultyLevel] = useState('medium');
-  const [learningStyle, setLearningStyle] = useState('visual');
+  const [learningStyle, setLearningStyle] = useState(profile?.learning_style || 'visual');
   const [sessionStats, setSessionStats] = useState({
     accuracy: 0,
     speed: 0,
@@ -63,156 +67,184 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
     hintUsage: 0,
     timeExtensions: 0
   });
+  const [studyContent, setStudyContent] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sessionStartTime] = useState(new Date());
 
-  // Enhanced study content based on task type and learning style
-  const generateStudyContent = () => {
-    const baseContent = {
-      'Adaptive Practice': [
-        {
-          type: 'theory',
-          title: 'Fundamental Concepts Review',
-          question: 'Which principle underlies the integration by parts formula?',
-          options: [
-            'Product rule for differentiation',
-            'Chain rule for differentiation', 
-            'Quotient rule for differentiation',
-            'Power rule for differentiation'
-          ],
-          correct: 0,
-          explanation: 'Integration by parts is derived from the product rule for differentiation. If we have d/dx[uv] = u\'v + uv\', then integrating both sides gives us the integration by parts formula.',
-          hint: 'Think about how integration and differentiation are inverse operations.',
-          points: 5,
-          difficulty: 'medium',
-          concepts: ['Product rule', 'Integration theory', 'Inverse operations'],
-          visualAid: 'product_rule_diagram',
-          audioExplanation: 'Available',
-          interactiveElement: 'formula_builder'
-        },
-        {
-          type: 'guided_practice',
-          title: 'Step-by-Step Integration',
-          question: 'Solve: ∫ x·e^x dx using integration by parts',
-          steps: [
-            { step: 1, instruction: 'Choose u and dv', answer: 'u = x, dv = e^x dx' },
-            { step: 2, instruction: 'Find du and v', answer: 'du = dx, v = e^x' },
-            { step: 3, instruction: 'Apply the formula', answer: 'x·e^x - ∫e^x dx' },
-            { step: 4, instruction: 'Simplify', answer: 'x·e^x - e^x + C = e^x(x-1) + C' }
-          ],
-          explanation: 'This is a classic integration by parts problem. The key insight is choosing u = x (which becomes simpler when differentiated) and dv = e^x dx (which remains manageable when integrated).',
-          hint: 'Remember LIATE: Logarithmic, Inverse trig, Algebraic, Trigonometric, Exponential - this helps choose u.',
-          points: 10,
-          difficulty: 'hard',
-          concepts: ['Integration by parts', 'Exponential functions', 'LIATE rule'],
-          visualAid: 'step_by_step_animation',
-          audioExplanation: 'Available',
-          interactiveElement: 'step_validator'
-        },
-        {
-          type: 'application',
-          title: 'Real-World Physics Problem',
-          question: 'A particle\'s velocity is v(t) = t·e^(-t). Find the displacement from t=0 to t=2.',
-          setup: 'Displacement = ∫₀² t·e^(-t) dt',
-          solution_method: 'integration_by_parts',
-          answer: '1 - 3e^(-2)',
-          explanation: 'Using integration by parts with u = t and dv = e^(-t) dt, we get du = dt and v = -e^(-t). This gives us -t·e^(-t) + ∫e^(-t) dt = -t·e^(-t) - e^(-t) = -e^(-t)(t+1). Evaluating from 0 to 2 gives us the final answer.',
-          hint: 'Set up the integration by parts formula carefully, paying attention to the negative sign in the exponential.',
-          points: 15,
-          difficulty: 'very_hard',
-          concepts: ['Physics applications', 'Definite integrals', 'Integration by parts'],
-          visualAid: 'velocity_displacement_graph',
-          audioExplanation: 'Available',
-          interactiveElement: 'graph_plotter'
-        }
-      ],
-      'Interactive Simulation': [
-        {
-          type: 'simulation',
-          title: 'Wave Function Visualization',
-          question: 'Observe how the wave function ψ(x) = A·sin(nπx/L) changes as you vary n. What happens to the number of nodes?',
-          simulation_params: {
-            variable: 'n',
-            range: [1, 5],
-            observable: 'nodes'
-          },
-          answer: 'increases_by_one',
-          explanation: 'As the quantum number n increases, the number of nodes (points where ψ = 0) increases by one each time. For n = 1, there are 0 nodes; for n = 2, there is 1 node, and so on.',
-          hint: 'Count the zero-crossings of the wave function inside the box.',
-          points: 8,
-          difficulty: 'medium',
-          concepts: ['Quantum mechanics', 'Wave functions', 'Boundary conditions'],
-          visualAid: 'interactive_wave_simulator',
-          audioExplanation: 'Available',
-          interactiveElement: 'parameter_slider'
-        },
-        {
-          type: 'conceptual',
-          title: 'Quantum Tunneling Probability',
-          question: 'In the simulation, increase the barrier height. How does this affect the transmission probability?',
-          options: [
-            'Increases exponentially',
-            'Decreases exponentially',
-            'Remains constant',
-            'Increases linearly'
-          ],
-          correct: 1,
-          explanation: 'The transmission probability decreases exponentially with barrier height. This is described by T ∝ e^(-2κa) where κ depends on the barrier height and a is the barrier width.',
-          hint: 'Think about how classical particles would behave versus quantum particles.',
-          points: 12,
-          difficulty: 'hard',
-          concepts: ['Quantum tunneling', 'Transmission probability', 'Exponential decay'],
-          visualAid: 'tunneling_probability_graph',
-          audioExplanation: 'Available',
-          interactiveElement: 'barrier_height_control'
-        }
-      ],
-      'Visual Learning + 3D Modeling': [
-        {
-          type: '3d_modeling',
-          title: 'Stereochemistry Analysis',
-          question: 'Build the 3D model of 2-chlorobutane and determine its R/S configuration.',
-          molecule: '2-chlorobutane',
-          task: 'assign_configuration',
-          answer: 'R',
-          explanation: 'Following the Cahn-Ingold-Prelog rules: 1) Assign priorities (Cl > C > C > H), 2) Orient with lowest priority away, 3) Trace path 1→2→3. The path goes clockwise, indicating R configuration.',
-          hint: 'Remember to put the hydrogen (lowest priority) pointing away from you before determining the direction.',
-          points: 10,
-          difficulty: 'medium',
-          concepts: ['Stereochemistry', 'R/S configuration', 'CIP rules'],
-          visualAid: '3d_molecular_model',
-          audioExplanation: 'Available',
-          interactiveElement: 'molecular_builder'
-        },
-        {
-          type: 'mechanism_drawing',
-          title: 'SN2 Reaction Mechanism',
-          question: 'Draw the complete mechanism for the reaction of CH₃CH₂Br with OH⁻.',
-          mechanism_type: 'SN2',
-          steps: [
-            'Nucleophile approaches from backside',
-            'Transition state formation',
-            'Bond breaking and forming simultaneously',
-            'Product formation with inversion'
-          ],
-          answer: 'concerted_mechanism',
-          explanation: 'SN2 reactions proceed through a concerted mechanism where bond breaking and forming occur simultaneously. The nucleophile attacks from the backside, leading to inversion of stereochemistry.',
-          hint: 'Remember that SN2 reactions are concerted - everything happens at once.',
-          points: 15,
-          difficulty: 'hard',
-          concepts: ['SN2 mechanism', 'Nucleophilic substitution', 'Stereochemistry'],
-          visualAid: 'mechanism_animation',
-          audioExplanation: 'Available',
-          interactiveElement: 'mechanism_drawer'
-        }
-      ]
-    };
+  // Generate study content when component mounts
+  useEffect(() => {
+    generateAPStudyContent();
+  }, [task]);
 
-    return baseContent[task.type as keyof typeof baseContent] || baseContent['Adaptive Practice'];
+  const generateAPStudyContent = async () => {
+    setLoading(true);
+    try {
+      // Generate content using the AI engine with user goals
+      const content = await aiEngine.generateStudyContent(
+        task.subject, 
+        task.topic, 
+        task.difficulty, 
+        learningStyle,
+        profile?.study_goals
+      );
+      
+      // Generate multiple questions for a comprehensive session
+      const questionSets = await aiEngine.generateQuestionSets?.(
+        task.subject, 
+        task.topic, 
+        task.difficulty, 
+        profile
+      ) || [];
+
+      // Combine generated content with question sets
+      const sessionContent = [];
+      
+      // Add theory/concept introduction
+      sessionContent.push({
+        type: 'theory',
+        title: `${task.topic} - AP Concepts`,
+        question: content.question || `What are the key AP concepts in ${task.topic}?`,
+        options: content.options || [
+          'Fundamental principles and AP applications',
+          'Advanced theoretical frameworks for AP exam',
+          'Practical implementation strategies for AP',
+          'Integration with related AP topics'
+        ],
+        correct: content.correct || 0,
+        explanation: content.explanation || `${task.topic} involves understanding core principles and their practical applications in ${task.subject} for the AP exam.`,
+        hint: content.hint || `Focus on the fundamental concepts first before moving to advanced AP applications.`,
+        points: content.points || 10,
+        difficulty: task.difficulty.toLowerCase(),
+        concepts: content.concepts || [task.topic, task.subject, 'AP Problem Solving'],
+        apSkills: content.apSkills || ['Analysis', 'Application'],
+        visualAid: content.visualAid || `${task.topic.toLowerCase()}_ap_diagram`,
+        audioExplanation: 'Available',
+        interactiveElement: content.interactiveElement || 'ap_concept_builder',
+        commonMistakes: content.commonMistakes || []
+      });
+
+      // Add questions from question sets
+      if (questionSets.length > 0) {
+        questionSets.forEach(questionSet => {
+          questionSet.questions.slice(0, 3).forEach(question => { // Limit to 3 questions per set
+            sessionContent.push({
+              type: question.type,
+              title: `${task.topic} - ${questionSet.title}`,
+              question: question.question,
+              options: question.options,
+              correct: typeof question.correctAnswer === 'number' ? question.correctAnswer : 0,
+              explanation: question.explanation,
+              hint: question.hint,
+              points: question.points,
+              difficulty: task.difficulty.toLowerCase(),
+              concepts: question.concepts,
+              apSkills: question.apSkills,
+              visualAid: `${task.topic.toLowerCase()}_${learningStyle}_ap_aid`,
+              audioExplanation: 'Available',
+              interactiveElement: getInteractiveElement(learningStyle, task.topic)
+            });
+          });
+        });
+      } else {
+        // Generate additional practice questions if no question sets available
+        for (let i = 0; i < 3; i++) {
+          sessionContent.push(generatePracticeQuestion(i));
+        }
+      }
+
+      // Add application/synthesis question
+      sessionContent.push({
+        type: 'application',
+        title: `${task.topic} - AP Application`,
+        question: `Apply your knowledge of ${task.topic} to solve this AP-style problem: How would you approach a complex scenario involving ${task.topic} concepts?`,
+        steps: [
+          { step: 1, instruction: 'Identify key concepts', answer: `Identify the main ${task.topic} principles involved` },
+          { step: 2, instruction: 'Analyze the problem', answer: 'Break down the problem into manageable parts' },
+          { step: 3, instruction: 'Apply appropriate methods', answer: `Use ${task.topic} techniques to solve each part` },
+          { step: 4, instruction: 'Synthesize solution', answer: 'Combine results and verify the answer' }
+        ],
+        explanation: `This application question tests your ability to use ${task.topic} concepts in complex, real-world scenarios similar to AP exam questions.`,
+        hint: `Start by identifying which ${task.topic} concepts are most relevant to the problem.`,
+        points: 20,
+        difficulty: task.difficulty.toLowerCase(),
+        concepts: [task.topic, task.subject, 'Problem Solving', 'Application'],
+        apSkills: ['Analysis', 'Application', 'Synthesis'],
+        visualAid: `${task.topic.toLowerCase()}_application_diagram`,
+        audioExplanation: 'Available',
+        interactiveElement: 'ap_problem_solver'
+      });
+
+      setStudyContent(sessionContent);
+    } catch (error) {
+      console.error('Error generating study content:', error);
+      // Fallback to basic content
+      setStudyContent([generateFallbackContent()]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const [studyContent] = useState(generateStudyContent());
+  const generatePracticeQuestion = (index: number) => {
+    return {
+      type: 'multiple_choice',
+      title: `${task.topic} - Practice Question ${index + 1}`,
+      question: `Which of the following best demonstrates understanding of ${task.topic} in ${task.subject}?`,
+      options: [
+        `Correct application of ${task.topic} principles`,
+        `Memorization of ${task.topic} formulas`,
+        `Basic recognition of ${task.topic} terms`,
+        `Advanced theoretical knowledge only`
+      ],
+      correct: 0,
+      explanation: `Understanding ${task.topic} requires both conceptual knowledge and practical application skills, which are essential for AP exam success.`,
+      hint: `Think about how ${task.topic} concepts are applied in real AP exam questions.`,
+      points: 12,
+      difficulty: task.difficulty.toLowerCase(),
+      concepts: [task.topic, task.subject, 'AP Application'],
+      apSkills: ['Knowledge', 'Application'],
+      visualAid: `${task.topic.toLowerCase()}_practice_diagram`,
+      audioExplanation: 'Available',
+      interactiveElement: 'ap_practice_tool'
+    };
+  };
+
+  const generateFallbackContent = () => {
+    return {
+      type: 'theory',
+      title: `${task.topic} - AP Overview`,
+      question: `What are the essential concepts you need to master in ${task.topic} for the AP exam?`,
+      options: [
+        'Core principles and their applications',
+        'Advanced theoretical frameworks',
+        'Memorization of facts and formulas',
+        'Historical context only'
+      ],
+      correct: 0,
+      explanation: `Success in AP ${task.subject} requires mastering core principles of ${task.topic} and understanding how to apply them in various contexts.`,
+      hint: `Focus on understanding the fundamental concepts rather than just memorizing.`,
+      points: 10,
+      difficulty: task.difficulty.toLowerCase(),
+      concepts: [task.topic, task.subject],
+      apSkills: ['Knowledge', 'Comprehension'],
+      visualAid: `${task.topic.toLowerCase()}_overview`,
+      audioExplanation: 'Available',
+      interactiveElement: 'concept_review'
+    };
+  };
+
+  const getInteractiveElement = (learningStyle: string, topic: string): string => {
+    const elements = {
+      'visual': 'interactive_ap_diagram',
+      'auditory': 'ap_audio_explanation',
+      'kinesthetic': 'hands_on_ap_simulation',
+      'reading': 'detailed_ap_text_analysis'
+    };
+    return elements[learningStyle as keyof typeof elements] || 'ap_concept_builder';
+  };
+
   const currentQuestion = studyContent[currentStep];
   const totalSteps = studyContent.length;
-  const progress = ((currentStep + 1) / totalSteps) * 100;
+  const progress = totalSteps > 0 ? ((currentStep + 1) / totalSteps) * 100 : 0;
 
   // Study mode configurations
   const studyModes = {
@@ -232,19 +264,19 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
   // Timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isActive) {
+    if (isActive && !loading) {
       interval = setInterval(() => {
         setSessionTime(time => time + 1);
         updateSessionStats();
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isActive, currentStep, completedSteps]);
+  }, [isActive, currentStep, completedSteps, loading]);
 
   const updateSessionStats = () => {
-    const accuracy = completedSteps.size / Math.max(currentStep, 1) * 100;
-    const speed = currentStep / Math.max(sessionTime / 60, 1); // questions per minute
-    const consistency = 100 - (adaptiveAdjustments.hintUsage * 10); // penalty for hint usage
+    const accuracy = totalSteps > 0 ? (completedSteps.size / Math.max(currentStep, 1)) * 100 : 0;
+    const speed = sessionTime > 0 ? currentStep / (sessionTime / 60) : 0; // questions per minute
+    const consistency = Math.max(0, 100 - (adaptiveAdjustments.hintUsage * 10)); // penalty for hint usage
     const engagement = Math.min(100, sessionTime / (task.duration * 60) * 100);
 
     setSessionStats({ accuracy, speed, consistency, engagement });
@@ -261,13 +293,13 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
     
     // Check if answer is correct and award points
     let isCorrect = false;
-    if (currentQuestion.type === 'theory' || currentQuestion.type === 'conceptual') {
+    if (currentQuestion.type === 'theory' || currentQuestion.type === 'multiple_choice') {
       isCorrect = answer === currentQuestion.correct;
-    } else if (currentQuestion.type === 'guided_practice') {
-      // For guided practice, check each step
+    } else if (currentQuestion.type === 'application') {
+      // For application questions, check if all steps are completed
       isCorrect = true; // Simplified for demo
-    } else if (currentQuestion.type === 'application' || currentQuestion.type === '3d_modeling') {
-      isCorrect = answer.toString().toLowerCase() === currentQuestion.answer.toLowerCase();
+    } else {
+      isCorrect = answer.toString().toLowerCase() === currentQuestion.answer?.toLowerCase();
     }
 
     if (isCorrect) {
@@ -308,18 +340,44 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
     }
   };
 
-  const completeSession = () => {
+  const completeSession = async () => {
     setIsActive(false);
+    const endTime = new Date();
+    const actualDuration = Math.round((endTime.getTime() - sessionStartTime.getTime()) / 1000 / 60); // minutes
+    
     const performance = {
       accuracy: sessionStats.accuracy,
       speed: sessionStats.speed,
       consistency: sessionStats.consistency,
       engagement: sessionStats.engagement,
       adaptiveAdjustments,
-      timeSpent: sessionTime,
+      timeSpent: actualDuration,
       stepsCompleted: completedSteps.size,
-      hintsUsed: adaptiveAdjustments.hintUsage
+      hintsUsed: adaptiveAdjustments.hintUsage,
+      conceptsMastered: currentQuestion?.concepts || [],
+      areasForImprovement: adaptiveAdjustments.hintUsage > 2 ? [task.topic] : []
     };
+
+    // Track session progress with AI engine
+    try {
+      await aiEngine.trackSessionProgress({
+        userId: profile?.id,
+        subject: task.subject,
+        topic: task.topic,
+        startTime: sessionStartTime,
+        endTime: endTime,
+        duration: actualDuration,
+        questionsAnswered: currentStep + 1,
+        correctAnswers: completedSteps.size,
+        accuracy: sessionStats.accuracy,
+        starsEarned: earnedStars,
+        conceptsMastered: performance.conceptsMastered,
+        areasForImprovement: performance.areasForImprovement
+      });
+    } catch (error) {
+      console.error('Error tracking session progress:', error);
+    }
+
     onComplete(earnedStars, performance);
   };
 
@@ -335,7 +393,7 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
               <span className="text-blue-400 font-semibold">Visual Aid</span>
             </div>
             <div className="bg-slate-700 rounded-lg p-4 text-center">
-              <span className="text-gray-400">{currentQuestion.visualAid || 'Interactive diagram would appear here'}</span>
+              <span className="text-gray-400">{currentQuestion.visualAid || 'Interactive AP diagram would appear here'}</span>
             </div>
           </div>
         );
@@ -348,7 +406,7 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
             </div>
             <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
               <Play className="w-4 h-4" />
-              <span>Play Audio</span>
+              <span>Play AP Audio</span>
             </button>
           </div>
         );
@@ -360,7 +418,7 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
               <span className="text-purple-400 font-semibold">Interactive Element</span>
             </div>
             <div className="bg-slate-700 rounded-lg p-4">
-              <span className="text-gray-400">{currentQuestion.interactiveElement || 'Interactive component would be here'}</span>
+              <span className="text-gray-400">{currentQuestion.interactiveElement || 'Interactive AP component would be here'}</span>
             </div>
           </div>
         );
@@ -374,12 +432,12 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
 
     switch (currentQuestion.type) {
       case 'theory':
-      case 'conceptual':
+      case 'multiple_choice':
         return (
           <div className="space-y-4">
             <div className="flex items-center space-x-2 mb-2">
-              <BookOpen className="w-5 h-5 text-blue-400" />
-              <span className="text-blue-400 font-semibold">{currentQuestion.type === 'theory' ? 'Theory' : 'Conceptual Understanding'}</span>
+              <GraduationCap className="w-5 h-5 text-blue-400" />
+              <span className="text-blue-400 font-semibold">AP {currentQuestion.type === 'theory' ? 'Theory' : 'Multiple Choice'}</span>
             </div>
             <h3 className="text-xl font-bold text-white mb-4">{currentQuestion.title}</h3>
             <p className="text-gray-300 text-lg mb-6">{currentQuestion.question}</p>
@@ -418,20 +476,20 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
           </div>
         );
 
-      case 'guided_practice':
+      case 'application':
         return (
           <div className="space-y-4">
             <div className="flex items-center space-x-2 mb-2">
-              <Target className="w-5 h-5 text-purple-400" />
-              <span className="text-purple-400 font-semibold">Guided Practice</span>
+              <Zap className="w-5 h-5 text-yellow-400" />
+              <span className="text-yellow-400 font-semibold">AP Application</span>
             </div>
             <h3 className="text-xl font-bold text-white mb-4">{currentQuestion.title}</h3>
-            <p className="text-gray-300 text-lg mb-6">{currentQuestion.question}</p>
+            <p className="text-gray-300 text-lg mb-4">{currentQuestion.question}</p>
             
             {renderLearningStyleContent()}
 
             <div className="space-y-4">
-              {currentQuestion.steps.map((step: any, index: number) => (
+              {currentQuestion.steps?.map((step: any, index: number) => (
                 <div key={index} className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">
                   <div className="flex items-center space-x-3 mb-2">
                     <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
@@ -441,10 +499,10 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
                   </div>
                   <input
                     type="text"
-                    placeholder="Enter your answer..."
+                    placeholder="Enter your approach..."
                     className="w-full bg-slate-600 text-white px-3 py-2 rounded border border-slate-500 focus:border-purple-500 focus:outline-none"
                   />
-                  <p className="text-gray-400 text-sm mt-2">Expected: {step.answer}</p>
+                  <p className="text-gray-400 text-sm mt-2">Suggested approach: {step.answer}</p>
                 </div>
               ))}
               
@@ -453,35 +511,25 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
                   onClick={() => handleAnswer('completed')}
                   className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
                 >
-                  Check Steps
+                  Complete Application
                 </button>
               )}
             </div>
           </div>
         );
 
-      case 'application':
+      default:
         return (
           <div className="space-y-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <Zap className="w-5 h-5 text-yellow-400" />
-              <span className="text-yellow-400 font-semibold">Real-World Application</span>
-            </div>
             <h3 className="text-xl font-bold text-white mb-4">{currentQuestion.title}</h3>
-            <p className="text-gray-300 text-lg mb-4">{currentQuestion.question}</p>
-            
-            {currentQuestion.setup && (
-              <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20 mb-4">
-                <p className="text-blue-300 font-mono">{currentQuestion.setup}</p>
-              </div>
-            )}
+            <p className="text-gray-300 text-lg mb-6">{currentQuestion.question}</p>
             
             {renderLearningStyleContent()}
 
             <div className="space-y-4">
               <input
                 type="text"
-                placeholder="Enter your final answer..."
+                placeholder="Enter your answer..."
                 value={answers[currentStep] || ''}
                 onChange={(e) => setAnswers(prev => ({ ...prev, [currentStep]: e.target.value }))}
                 disabled={showExplanation}
@@ -500,125 +548,22 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
             </div>
           </div>
         );
-
-      case 'simulation':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <Eye className="w-5 h-5 text-green-400" />
-              <span className="text-green-400 font-semibold">Interactive Simulation</span>
-            </div>
-            <h3 className="text-xl font-bold text-white mb-4">{currentQuestion.title}</h3>
-            <p className="text-gray-300 text-lg mb-6">{currentQuestion.question}</p>
-            
-            <div className="bg-slate-700/50 rounded-lg p-6 mb-6">
-              <div className="text-center mb-4">
-                <span className="text-gray-400">Quantum Wave Function Simulator</span>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-300 text-sm mb-2">Quantum Number (n)</label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    value={answers[currentStep] || 1}
-                    onChange={(e) => setAnswers(prev => ({ ...prev, [currentStep]: e.target.value }))}
-                    className="w-full"
-                  />
-                  <div className="text-center text-white mt-2">n = {answers[currentStep] || 1}</div>
-                </div>
-                <div className="h-32 bg-slate-800 rounded flex items-center justify-center">
-                  <span className="text-gray-400">Wave function visualization would appear here</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {currentQuestion.options.map((option: string, index: number) => (
-                <button
-                  key={index}
-                  onClick={() => handleAnswer(index)}
-                  disabled={showExplanation}
-                  className={`w-full p-4 rounded-lg border text-left transition-all duration-200 ${
-                    answers[currentStep + '_answer'] === index
-                      ? showExplanation
-                        ? index === currentQuestion.correct
-                          ? 'bg-green-500/20 border-green-500 text-green-300'
-                          : 'bg-red-500/20 border-red-500 text-red-300'
-                        : 'bg-purple-500/20 border-purple-500 text-purple-300'
-                      : showExplanation && index === currentQuestion.correct
-                        ? 'bg-green-500/20 border-green-500 text-green-300'
-                        : 'bg-slate-700/50 border-slate-600 text-gray-300 hover:border-purple-500/50 hover:bg-slate-700'
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-
-      case '3d_modeling':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <Video className="w-5 h-5 text-purple-400" />
-              <span className="text-purple-400 font-semibold">3D Molecular Modeling</span>
-            </div>
-            <h3 className="text-xl font-bold text-white mb-4">{currentQuestion.title}</h3>
-            <p className="text-gray-300 text-lg mb-6">{currentQuestion.question}</p>
-            
-            <div className="bg-slate-700/50 rounded-lg p-6 mb-6">
-              <div className="text-center mb-4">
-                <span className="text-gray-400">3D Molecular Builder - {currentQuestion.molecule}</span>
-              </div>
-              <div className="h-64 bg-slate-800 rounded flex items-center justify-center">
-                <span className="text-gray-400">3D molecular model would appear here</span>
-              </div>
-              <div className="mt-4 flex justify-center space-x-4">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-                  Rotate
-                </button>
-                <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-                  Zoom
-                </button>
-                <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded">
-                  Analyze
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <select
-                value={answers[currentStep] || ''}
-                onChange={(e) => setAnswers(prev => ({ ...prev, [currentStep]: e.target.value }))}
-                disabled={showExplanation}
-                className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-purple-500 focus:outline-none"
-              >
-                <option value="">Select configuration...</option>
-                <option value="R">R configuration</option>
-                <option value="S">S configuration</option>
-                <option value="achiral">Achiral</option>
-              </select>
-
-              {!showExplanation && (
-                <button
-                  onClick={() => handleAnswer(answers[currentStep])}
-                  disabled={!answers[currentStep]}
-                  className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
-                >
-                  Submit Configuration
-                </button>
-              )}
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-slate-800/95 backdrop-blur-sm rounded-xl border border-slate-700/50 p-8 text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <Brain className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Generating AP Study Content</h2>
+          <p className="text-gray-300">Creating personalized questions for {task.topic}...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -730,7 +675,7 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
           {renderQuestion()}
 
           {/* Enhanced Hint System */}
-          {!showExplanation && studyMode !== 'challenge' && (
+          {!showExplanation && studyMode !== 'challenge' && currentQuestion?.hint && (
             <div className="mt-6">
               <button
                 onClick={useHint}
@@ -743,7 +688,7 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
               
               {showHint && (
                 <div className="mt-3 p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-                  <p className="text-yellow-300 text-sm">{currentQuestion?.hint}</p>
+                  <p className="text-yellow-300 text-sm">{currentQuestion.hint}</p>
                 </div>
               )}
             </div>
@@ -757,17 +702,45 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
                   <BookOpen className="w-4 h-4 text-blue-400" />
                   <span className="text-blue-400 font-semibold">Detailed Explanation</span>
                 </div>
-                <p className="text-blue-300 text-sm">{currentQuestion?.explanation}</p>
+                <p className="text-blue-300 text-sm">{currentQuestion.explanation}</p>
               </div>
+              
+              {/* AP Skills Tags */}
+              {currentQuestion?.apSkills && (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-gray-400 text-sm">AP Skills:</span>
+                  {currentQuestion.apSkills.map((skill: string, index: number) => (
+                    <span key={index} className="px-2 py-1 bg-green-500/20 text-green-300 rounded text-xs">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              )}
               
               {/* Concept Tags */}
               {currentQuestion?.concepts && (
                 <div className="flex flex-wrap gap-2">
+                  <span className="text-gray-400 text-sm">Concepts:</span>
                   {currentQuestion.concepts.map((concept: string, index: number) => (
                     <span key={index} className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs">
                       {concept}
                     </span>
                   ))}
+                </div>
+              )}
+
+              {/* Common Mistakes */}
+              {currentQuestion?.commonMistakes && currentQuestion.commonMistakes.length > 0 && (
+                <div className="p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <AlertCircle className="w-4 h-4 text-red-400" />
+                    <span className="text-red-400 font-semibold">Common Mistakes to Avoid</span>
+                  </div>
+                  <ul className="text-red-300 text-sm space-y-1">
+                    {currentQuestion.commonMistakes.map((mistake: string, index: number) => (
+                      <li key={index}>• {mistake}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
               
