@@ -627,6 +627,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
                   ? 'opacity-50 cursor-not-allowed' 
                   : 'hover:border-purple-500/50 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/10'
               }`}
+              title={action.disabled ? 'Create an AP study plan first' : action.description}
             >
               <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform relative`}>
                 <Icon className="w-6 h-6 text-white" />
