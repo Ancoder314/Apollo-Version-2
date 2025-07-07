@@ -18,7 +18,8 @@ import {
   Plus,
   Sparkles,
   BookOpen,
-  GraduationCap
+  GraduationCap,
+  AlertCircle
 } from 'lucide-react';
 import InteractiveStudySession from './InteractiveStudySession';
 import StudyPlanGenerator from './StudyPlanGenerator';
@@ -38,6 +39,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   const [currentStudyPlan, setCurrentStudyPlan] = useState<StudyPlan | null>(null);
   const [studyTasks, setStudyTasks] = useState<any[]>([]);
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+  const [error, setError] = useState('');
   const [dailyProgress, setDailyProgress] = useState({
     studyTime: 0,
     lessonsCompleted: 0,
@@ -287,9 +289,58 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   const generatePersonalizedFocusTask = () => {
     if (!currentStudyPlan) return null;
     
-    // Find high priority AP subjects (weak areas)
-    const focusSubjects = currentStudyPlan.subjects.filter(s => s.priority === 'high');
-    if (focusSubjects.length === 0) return null;
+    // Find high priority AP subjects (weak areas) or use user's weak areas
+    let focusSubjects = currentStudyPlan.subjects.filter(s => s.priority === 'high');
+    
+    // If no high priority subjects, use user's weak areas
+    if (focusSubjects.length === 0 && profile?.weak_areas && profile.weak_areas.length > 0) {
+      // Create a focus subject from weak areas
+      const weakArea = profile.weak_areas[0];
+      focusSubjects = [{
+        name: `AP ${weakArea}`,
+        priority: 'high',
+        topics: [{
+          name: `${weakArea} Fundamentals`,
+          difficulty: 'Intermediate',
+          estimatedTime: 45,
+          prerequisites: [],
+          learningObjectives: [`Master ${weakArea} concepts`, `Improve ${weakArea} problem-solving`],
+          resources: [],
+          assessments: []
+        }],
+        reasoning: `Focus on your identified weak area: ${weakArea}`
+      }];
+    }
+    
+    if (focusSubjects.length === 0) {
+      // Create a general focus task based on current level
+      const generalTopics = [
+        'Problem Solving Strategies',
+        'Critical Thinking Skills',
+        'Test-Taking Techniques',
+        'Time Management',
+        'Study Methods'
+      ];
+      const topic = generalTopics[Math.floor(Math.random() * generalTopics.length)];
+      
+      return {
+        id: 'focus-general',
+        type: 'AP Focus Session',
+        subject: 'AP Study Skills',
+        topic: topic,
+        difficulty: 'Intermediate',
+        duration: 30,
+        stars: 20,
+        description: `Improve your AP study effectiveness with ${topic.toLowerCase()} practice.`,
+        aiRecommended: true,
+        learningStyle: profile?.learning_style || 'visual',
+        prerequisites: [],
+        learningObjectives: [`Develop ${topic.toLowerCase()}`, 'Improve AP exam performance'],
+        resources: [],
+        assessments: [],
+        isPersonalized: true
+      };
+    }
 
     const subject = focusSubjects[0];
     const topic = subject.topics[0];
@@ -299,7 +350,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
       type: 'AP Focus Session',
       subject: subject.name,
       topic: topic?.name || 'Foundation Review',
-      difficulty: 'Adaptive',
+      difficulty: topic?.difficulty || 'Intermediate',
       duration: 45,
       stars: 25,
       description: `Targeted AP practice for your weak area: ${subject.name}. ${subject.reasoning}`,
@@ -317,15 +368,24 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     if (!currentStudyPlan) return null;
     
     // Get recently studied topics from completed tasks
-    const recentTopics = studyTasks
+    let recentTopics = studyTasks
       .filter(task => completedTasks.has(task.id))
       .slice(-3)
       .map(task => task.topic);
     
     if (recentTopics.length === 0) {
-      // Use first few topics from study plan
-      const allTopics = currentStudyPlan.subjects.flatMap(s => s.topics.slice(0, 2));
-      recentTopics.push(...allTopics.slice(0, 3).map(t => t.name));
+      // Use first few topics from study plan or create general review
+      if (currentStudyPlan.subjects.length > 0) {
+        const allTopics = currentStudyPlan.subjects.flatMap(s => s.topics.slice(0, 2));
+        recentTopics = allTopics.slice(0, 3).map(t => t.name);
+      } else {
+        // Create a general review based on user's strong areas
+        recentTopics = profile?.strong_areas?.slice(0, 3) || ['AP Fundamentals', 'Study Techniques', 'Exam Strategies'];
+      }
+    }
+    
+    if (recentTopics.length === 0) {
+      recentTopics = ['AP Fundamentals', 'Study Techniques'];
     }
     
     return {
@@ -352,23 +412,63 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     if (!currentStudyPlan) return null;
     
     // Find advanced topics from AP study plan
-    const challengeSubjects = currentStudyPlan.subjects.filter(s => 
+    let challengeSubjects = currentStudyPlan.subjects.filter(s => 
       s.topics.some(t => t.difficulty === 'Advanced' || t.difficulty === 'Expert')
     );
     
-    if (challengeSubjects.length === 0) return null;
+    // If no advanced topics, create challenges from intermediate topics
+    if (challengeSubjects.length === 0) {
+      challengeSubjects = currentStudyPlan.subjects.filter(s => 
+        s.topics.some(t => t.difficulty === 'Intermediate')
+      );
+    }
+    
+    // If still no subjects, create a general challenge
+    if (challengeSubjects.length === 0) {
+      const challengeTopics = [
+        'Advanced Problem Solving',
+        'Complex Analysis',
+        'Synthesis and Evaluation',
+        'Multi-Step Problems',
+        'Critical Thinking'
+      ];
+      const topic = challengeTopics[Math.floor(Math.random() * challengeTopics.length)];
+      
+      return {
+        id: 'challenge-general',
+        type: 'AP Challenge Mode',
+        subject: 'AP Advanced Skills',
+        topic: topic,
+        difficulty: 'Advanced',
+        duration: 45,
+        stars: 30,
+        description: `Challenge yourself with advanced AP skills: ${topic}. Test your mastery!`,
+        aiRecommended: true,
+        learningStyle: profile?.learning_style || 'visual',
+        prerequisites: [],
+        learningObjectives: [`Master ${topic.toLowerCase()}`, 'Develop advanced AP skills'],
+        resources: [],
+        assessments: [],
+        isPersonalized: true
+      };
+    }
 
     const subject = challengeSubjects[0];
-    const advancedTopic = subject.topics.find(t => 
+    let advancedTopic = subject.topics.find(t => 
       t.difficulty === 'Advanced' || t.difficulty === 'Expert'
     );
+    
+    // If no advanced topic, use intermediate and make it challenging
+    if (!advancedTopic) {
+      advancedTopic = subject.topics.find(t => t.difficulty === 'Intermediate');
+    }
     
     return {
       id: 'challenge-task',
       type: 'AP Challenge Mode',
       subject: subject.name,
       topic: advancedTopic?.name || 'Advanced AP Problems',
-      difficulty: 'Expert',
+      difficulty: 'Advanced',
       duration: 60,
       stars: 35,
       description: `Challenge yourself with advanced ${subject.name} AP problems. Test your mastery!`,
@@ -383,26 +483,41 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   };
 
   const handleFocusAreas = () => {
-    if (!currentStudyPlan) return;
+    if (!currentStudyPlan) {
+      setError('Please create an AP study plan first to access focus areas.');
+      return;
+    }
     const focusTask = generatePersonalizedFocusTask();
     if (focusTask) {
       handleTaskStart(focusTask);
+    } else {
+      setError('No focus areas identified. Complete more sessions to identify weak areas.');
     }
   };
 
   const handleQuickReview = () => {
-    if (!currentStudyPlan) return;
+    if (!currentStudyPlan) {
+      setError('Please create an AP study plan first to access quick review.');
+      return;
+    }
     const reviewTask = generatePersonalizedQuickReview();
     if (reviewTask) {
       handleTaskStart(reviewTask);
+    } else {
+      setError('No recent topics to review. Complete some study sessions first.');
     }
   };
 
   const handleChallenges = () => {
-    if (!currentStudyPlan) return;
+    if (!currentStudyPlan) {
+      setError('Please create an AP study plan first to access challenges.');
+      return;
+    }
     const challengeTask = generatePersonalizedChallenge();
     if (challengeTask) {
       handleTaskStart(challengeTask);
+    } else {
+      setError('No advanced challenges available yet. Master more basic concepts first.');
     }
   };
 
@@ -451,6 +566,22 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-5 h-5 text-red-400" />
+            <p className="text-red-400">{error}</p>
+          </div>
+          <button
+            onClick={() => setError('')}
+            className="mt-2 text-red-300 hover:text-red-200 text-sm underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Welcome Header */}
       <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-xl p-6 border border-purple-500/20">
         <div className="flex items-center justify-between">
@@ -533,6 +664,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
               <button
                 onClick={() => setShowPlanGenerator(true)}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 hover:scale-105 flex items-center space-x-2"
+                title="Start Focus Timer"
               >
                 <Brain className="w-5 h-5" />
                 <span>Get Started</span>
