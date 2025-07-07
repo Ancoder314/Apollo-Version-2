@@ -614,6 +614,31 @@ class APCourseEngine {
     return outcomeMap[level];
   }
 
+  private generateSubjectReasoning(subjectName: string, priority: 'high' | 'medium' | 'low', userProfile: UserProfile): string {
+    const reasoningMap = {
+      high: `${subjectName} is prioritized as a high-focus area due to identified weaknesses or critical importance for your academic goals.`,
+      medium: `${subjectName} receives balanced attention to maintain steady progress and build comprehensive understanding.`,
+      low: `${subjectName} is included with lower priority as it aligns with your existing strengths or serves as supplementary learning.`
+    };
+    
+    let reasoning = reasoningMap[priority];
+    
+    // Add personalized context based on user profile
+    if (userProfile.weakAreas.some(weak => subjectName.toLowerCase().includes(weak.toLowerCase()))) {
+      reasoning += ` This subject addresses your identified weak areas and requires focused attention.`;
+    }
+    
+    if (userProfile.strongAreas.some(strong => subjectName.toLowerCase().includes(strong.toLowerCase()))) {
+      reasoning += ` Building on your existing strengths in this area will help maintain confidence while tackling more challenging subjects.`;
+    }
+    
+    if (userProfile.studyGoals.some(goal => goal.toLowerCase().includes(subjectName.toLowerCase().replace('ap ', '')))) {
+      reasoning += ` This directly aligns with your stated study goals and career aspirations.`;
+    }
+    
+    return reasoning;
+  }
+
   // Study content generation methods
   async generateStudyContent(subject: string, topic: string, difficulty: string, learningStyle: string, studyGoals?: string[]): Promise<any> {
     console.log(`🎯 Generating study content for ${subject} - ${topic}`);
