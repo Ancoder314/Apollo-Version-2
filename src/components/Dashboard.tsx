@@ -148,7 +148,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   };
 
   const generateAPRecommendedTasks = () => {
-    if (!currentStudyPlan || !profile) return;
+    if (!currentStudyPlan || !profile) {
+      console.warn('Missing study plan or profile for task generation');
+      setStudyTasks([]);
+      return;
+    }
 
     // Validate that currentStudyPlan has proper structure
     if (!currentStudyPlan.subjects || !Array.isArray(currentStudyPlan.subjects)) {
@@ -161,7 +165,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     // Generate tasks based on AP study plan subjects
     currentStudyPlan.subjects.forEach((subject, index) => {
       // Ensure subject has topics array
-      if (!subject.topics || !Array.isArray(subject.topics)) {
+      if (!subject || !subject.topics || !Array.isArray(subject.topics)) {
         console.warn('Subject topics is not a valid array for subject:', subject.name);
         return;
       }
@@ -176,14 +180,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
         if (tasks.length < 6) { // Limit to 6 tasks
           tasks.push({
             id: `${index}-${topicIndex}`,
-            type: getAPTaskType(subject.name, topic.difficulty),
-            subject: subject.name,
+            type: getAPTaskType(subject.name || 'AP Subject', topic.difficulty || 'Intermediate'),
+            subject: subject.name || 'AP Subject',
             topic: topic.name || 'AP Study Topic',
             difficulty: topic.difficulty || 'Intermediate',
             duration: topic.estimatedTime || 30,
-            stars: calculateAPStars(topic.difficulty),
-            description: `Master ${topic.name || 'AP concepts'} with ${getAPTaskType(subject.name, topic.difficulty).toLowerCase()}`,
-            aiRecommended: subject.priority === 'high',
+            stars: calculateAPStars(topic.difficulty || 'Intermediate'),
+            description: `Master ${topic.name || 'AP concepts'} with ${getAPTaskType(subject.name || 'AP Subject', topic.difficulty || 'Intermediate').toLowerCase()}`,
+            aiRecommended: (subject.priority || 'medium') === 'high',
             learningStyle: profile.learning_style || 'visual',
             prerequisites: topic.prerequisites || [],
             learningObjectives: topic.learningObjectives || [],
@@ -308,7 +312,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     if (!currentStudyPlan) return null;
     
     // Find high priority AP subjects (weak areas) or use user's weak areas
-    let focusSubjects = currentStudyPlan.subjects.filter(s => s.priority === 'high');
+    let focusSubjects = currentStudyPlan.subjects.filter(s => s && s.priority === 'high');
     
     // If no high priority subjects, use user's weak areas
     if (focusSubjects.length === 0 && profile?.weak_areas && profile.weak_areas.length > 0) {
@@ -361,17 +365,17 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     }
 
     const subject = focusSubjects[0];
-    const topic = subject.topics[0];
+    const topic = subject.topics && subject.topics.length > 0 ? subject.topics[0] : null;
     
     return {
       id: 'focus-task',
       type: 'AP Focus Session',
-      subject: subject.name,
+      subject: subject.name || 'AP Focus',
       topic: topic?.name || 'Foundation Review',
       difficulty: topic?.difficulty || 'Intermediate',
       duration: 45,
       stars: 25,
-      description: `Targeted AP practice for your weak area: ${subject.name}. ${subject.reasoning}`,
+      description: `Targeted AP practice for your weak area: ${subject.name || 'AP Focus'}. ${subject.reasoning || 'Focus on improving weak areas.'}`,
       aiRecommended: true,
       learningStyle: profile?.learning_style || 'visual',
       prerequisites: topic?.prerequisites || [],
@@ -431,13 +435,15 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     
     // Find advanced topics from AP study plan
     let challengeSubjects = currentStudyPlan.subjects.filter(s => 
-      s.topics.some(t => t.difficulty === 'Advanced' || t.difficulty === 'Expert')
+      s && s.topics && Array.isArray(s.topics) && 
+      s.topics.some(t => t && (t.difficulty === 'Advanced' || t.difficulty === 'Expert'))
     );
     
     // If no advanced topics, create challenges from intermediate topics
     if (challengeSubjects.length === 0) {
       challengeSubjects = currentStudyPlan.subjects.filter(s => 
-        s.topics.some(t => t.difficulty === 'Intermediate')
+        s && s.topics && Array.isArray(s.topics) && 
+        s.topics.some(t => t && t.difficulty === 'Intermediate')
       );
     }
     
@@ -472,24 +478,24 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     }
 
     const subject = challengeSubjects[0];
-    let advancedTopic = subject.topics.find(t => 
+    let advancedTopic = subject.topics && subject.topics.find(t => 
       t.difficulty === 'Advanced' || t.difficulty === 'Expert'
     );
     
     // If no advanced topic, use intermediate and make it challenging
     if (!advancedTopic) {
-      advancedTopic = subject.topics.find(t => t.difficulty === 'Intermediate');
+      advancedTopic = subject.topics && subject.topics.find(t => t && t.difficulty === 'Intermediate');
     }
     
     return {
       id: 'challenge-task',
       type: 'AP Challenge Mode',
-      subject: subject.name,
+      subject: subject.name || 'AP Challenge',
       topic: advancedTopic?.name || 'Advanced AP Problems',
       difficulty: 'Advanced',
       duration: 60,
       stars: 35,
-      description: `Challenge yourself with advanced ${subject.name} AP problems. Test your mastery!`,
+      description: `Challenge yourself with advanced ${subject.name || 'AP'} problems. Test your mastery!`,
       aiRecommended: true,
       learningStyle: profile?.learning_style || 'visual',
       prerequisites: advancedTopic?.prerequisites || [],
