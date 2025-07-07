@@ -174,6 +174,29 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
       const plan = await aiEngine.generateStudyPlan(enhancedProfile, validGoals, enhancedInfo);
       console.log('✅ AP study plan generated:', plan);
 
+      // Validate the generated plan has required structure
+      if (!plan || !plan.subjects || !Array.isArray(plan.subjects)) {
+        throw new Error('Generated study plan is missing required subjects data');
+      }
+
+      // Ensure each subject has topics array
+      plan.subjects.forEach((subject, index) => {
+        if (!subject.topics || !Array.isArray(subject.topics)) {
+          console.warn(`Subject ${subject.name} missing topics, adding default topics`);
+          subject.topics = [
+            {
+              name: `${subject.name} Fundamentals`,
+              difficulty: 'Intermediate',
+              estimatedTime: 45,
+              prerequisites: [],
+              learningObjectives: [`Master ${subject.name} basics`],
+              resources: [],
+              assessments: []
+            }
+          ];
+        }
+      });
+
       // Deactivate existing active plans
       console.log('🔄 Deactivating existing plans...');
       await supabase
