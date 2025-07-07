@@ -150,21 +150,39 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   const generateAPRecommendedTasks = () => {
     if (!currentStudyPlan || !profile) return;
 
+    // Validate that currentStudyPlan has proper structure
+    if (!currentStudyPlan.subjects || !Array.isArray(currentStudyPlan.subjects)) {
+      console.warn('Study plan subjects is not a valid array:', currentStudyPlan.subjects);
+      setStudyTasks([]);
+      return;
+    }
     const tasks: any[] = [];
     
     // Generate tasks based on AP study plan subjects
     currentStudyPlan.subjects.forEach((subject, index) => {
+      // Ensure subject has topics array
+      if (!subject.topics || !Array.isArray(subject.topics)) {
+        console.warn('Subject topics is not a valid array for subject:', subject.name);
+        return;
+      }
+      
       subject.topics.forEach((topic, topicIndex) => {
+        // Ensure topic has required properties
+        if (!topic || typeof topic !== 'object') {
+          console.warn('Invalid topic object:', topic);
+          return;
+        }
+        
         if (tasks.length < 6) { // Limit to 6 tasks
           tasks.push({
             id: `${index}-${topicIndex}`,
             type: getAPTaskType(subject.name, topic.difficulty),
             subject: subject.name,
-            topic: topic.name,
-            difficulty: topic.difficulty,
-            duration: topic.estimatedTime,
+            topic: topic.name || 'AP Study Topic',
+            difficulty: topic.difficulty || 'Intermediate',
+            duration: topic.estimatedTime || 30,
             stars: calculateAPStars(topic.difficulty),
-            description: `Master ${topic.name} with ${getAPTaskType(subject.name, topic.difficulty).toLowerCase()}`,
+            description: `Master ${topic.name || 'AP concepts'} with ${getAPTaskType(subject.name, topic.difficulty).toLowerCase()}`,
             aiRecommended: subject.priority === 'high',
             learningStyle: profile.learning_style || 'visual',
             prerequisites: topic.prerequisites || [],
