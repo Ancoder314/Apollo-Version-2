@@ -24,48 +24,86 @@ export const useAuth = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    const timeoutId = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn('Auth loading timeout - forcing completion');
-        setLoading(false);
-        setError('Authentication timeout. Please refresh the page.');
-      }
-    }, 10000); // 10 second timeout
+    let timeoutId: NodeJS.Timeout;
+    
+    const initializeAuth = async () => {
+      try {
+        setError(null);
+        setIsRetrying(false);
+        
+        // Set a more reasonable timeout
+        timeoutId = setTimeout(() => {
+          if (mounted && loading) {
+            console.warn('Auth initialization timeout');
+            setError('Connection timeout. Please check your internet connection and try again.');
+            setLoading(false);
+          }
+        }, 8000); // Reduced to 8 seconds
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (!mounted) return;
-      
-      if (error) {
-        console.error('Session error:', error);
-        setError('Failed to get session. Please try again.');
-        setLoading(false);
-        return;
+        // Get initial session with retry logic
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+        
+        clearTimeout(timeoutId);
+        
+        if (error) {
+          console.error('Session error:', error);
+          if (retryCount < 2) {
+            setRetryCount(prev => prev + 1);
+            setIsRetrying(true);
+            setTimeout(() => {
+              if (mounted) initializeAuth();
+            }, 2000);
+            return;
+          }
+          setError('Failed to connect to authentication service. Please refresh the page.');
+          setLoading(false);
+          return;
+        }
+        
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!mounted) return;
+        console.error('Auth initialization error:', err);
+        if (retryCount < 2) {
+          setRetryCount(prev => prev + 1);
+          setIsRetrying(true);
+          setTimeout(() => {
+            if (mounted) initializeAuth();
+          }, 2000);
+        } else {
+          setError('Failed to initialize authentication. Please refresh the page.');
+          setLoading(false);
+        }
       }
-      
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    }).catch((err) => {
-      if (!mounted) return;
-      console.error('Session fetch error:', err);
-      setError('Failed to initialize authentication.');
-      setLoading(false);
-    });
+    };
+
+    // Start initialization
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
         
+        console.log('Auth state change:', event);
+        
+        // Reset retry count on successful auth change
+        setRetryCount(0);
+        setError(null);
+        
         setUser(session?.user ?? null);
-        setError(null); // Clear any previous errors
         
         if (session?.user) {
           await fetchProfile(session.user.id);
@@ -81,7 +119,7 @@ export const useAuth = () => {
       clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [retryCount]); // Add retryCount as dependency
 
   const fetchProfile = async (userId: string) => {
     if (!userId) {
@@ -91,18 +129,28 @@ export const useAuth = () => {
     }
     
     try {
-      setError(null); // Clear any previous errors
+      setError(null);
       
-      // Use maybeSingle() to handle cases where no profile exists without throwing an error
-      const { data, error } = await supabase
+      // Add timeout for profile fetch
+      const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
+        
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
+      );
+      
+      const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
 
       if (error) {
         console.error('Error fetching profile:', error);
-        setError('Failed to load profile. Please try again.');
+        if (error.message?.includes('timeout')) {
+          setError('Profile loading timeout. Please refresh the page.');
+        } else {
+          setError('Failed to load profile. Please try again.');
+        }
         setLoading(false);
         return;
       }
@@ -193,34 +241,70 @@ export const useAuth = () => {
   const signIn = async (email: string, password: string) => {
     setError(null);
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    if (error) {
-      setError(error.message);
+    
+    try {
+      const signInPromise = supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sign in timeout')), 15000)
+      );
+      
+      const { data, error } = await Promise.race([signInPromise, timeoutPromise]) as any;
+      
+      if (error) {
+        if (error.message?.includes('timeout')) {
+          setError('Sign in is taking too long. Please check your connection and try again.');
+        } else {
+          setError(error.message);
+        }
+        setLoading(false);
+      }
+      return { data, error };
+    } catch (error: any) {
+      setError(error.message || 'Sign in failed. Please try again.');
       setLoading(false);
+      return { data: null, error };
     }
-    return { data, error };
   };
 
   const signUp = async (email: string, password: string, name: string) => {
     setError(null);
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name
+    
+    try {
+      const signUpPromise = supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name
+          }
         }
+      });
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sign up timeout')), 15000)
+      );
+      
+      const { data, error } = await Promise.race([signUpPromise, timeoutPromise]) as any;
+      
+      if (error) {
+        if (error.message?.includes('timeout')) {
+          setError('Sign up is taking too long. Please check your connection and try again.');
+        } else {
+          setError(error.message);
+        }
+        setLoading(false);
       }
-    });
-    if (error) {
-      setError(error.message);
+      return { data, error };
+    } catch (error: any) {
+      setError(error.message || 'Sign up failed. Please try again.');
       setLoading(false);
+      return { data: null, error };
     }
-    return { data, error };
   };
 
   const signOut = async () => {
@@ -232,11 +316,20 @@ export const useAuth = () => {
     return { error };
   };
 
+  const retry = () => {
+    setRetryCount(0);
+    setError(null);
+    setLoading(true);
+    window.location.reload();
+  };
+
   return {
     user,
     profile,
     loading,
     error,
+    isRetrying,
+    retry,
     signIn,
     signUp,
     signOut,

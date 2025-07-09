@@ -11,7 +11,7 @@ const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { signIn, signUp, error: authError } = useAuth();
+  const { signIn, signUp, error: authError, isRetrying } = useAuth();
 
   // Display auth hook errors
   useEffect(() => {
@@ -21,6 +21,13 @@ const Auth: React.FC = () => {
     }
   }, [authError]);
 
+  // Show retry state
+  useEffect(() => {
+    if (isRetrying) {
+      setLoading(true);
+      setError('');
+    }
+  }, [isRetrying]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -44,6 +51,7 @@ const Auth: React.FC = () => {
       setLoading(false);
       return;
     }
+    
     try {
       if (isSignUp) {
         const { error } = await signUp(email, password, name);
@@ -54,8 +62,10 @@ const Auth: React.FC = () => {
       }
     } catch (error: any) {
       setError(error.message || 'An unexpected error occurred. Please try again.');
-    } finally {
       setLoading(false);
+    } finally {
+      // Don't set loading to false here if auth is successful
+      // Let the auth hook handle the loading state
     }
   };
 
