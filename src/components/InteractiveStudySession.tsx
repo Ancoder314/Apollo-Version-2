@@ -73,12 +73,43 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
 
   // Generate study content when component mounts
   useEffect(() => {
-    generateAPStudyContent();
+    const generateContent = async () => {
+      try {
+        await generateAPStudyContent();
+      } catch (error) {
+        console.error('Error generating study content:', error);
+        setLoading(false);
+        // Set fallback content
+        setStudyContent([generateFallbackContent()]);
+      }
+    };
+    
+    generateContent();
   }, [task]);
 
   const generateAPStudyContent = async () => {
     setLoading(true);
     try {
+      // Add timeout for content generation
+      const contentPromise = generateContentWithTimeout();
+      const content = await contentPromise;
+      
+      setStudyContent(content);
+    } catch (error) {
+      console.error('Error generating study content:', error);
+      // Fallback to basic content
+      setStudyContent([generateFallbackContent()]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateContentWithTimeout = async () => {
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Content generation timed out')), 15000)
+    );
+    
+    const contentPromise = (async () => {
       // Generate content using the AI engine with user goals
       const content = await aiEngine.generateStudyContent(
         task.subject, 
@@ -174,14 +205,10 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
         interactiveElement: 'ap_problem_solver'
       });
 
-      setStudyContent(sessionContent);
-    } catch (error) {
-      console.error('Error generating study content:', error);
-      // Fallback to basic content
-      setStudyContent([generateFallbackContent()]);
-    } finally {
-      setLoading(false);
-    }
+      return sessionContent;
+    })();
+    
+    return Promise.race([contentPromise, timeoutPromise]);
   };
 
   const generatePracticeQuestion = (index: number) => {

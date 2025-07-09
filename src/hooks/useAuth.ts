@@ -23,22 +23,50 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+    const timeoutId = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('Auth loading timeout - forcing completion');
+        setLoading(false);
+        setError('Authentication timeout. Please refresh the page.');
+      }
+    }, 10000); // 10 second timeout
+
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!mounted) return;
+      
+      if (error) {
+        console.error('Session error:', error);
+        setError('Failed to get session. Please try again.');
+        setLoading(false);
+        return;
+      }
+      
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
         setLoading(false);
       }
+    }).catch((err) => {
+      if (!mounted) return;
+      console.error('Session fetch error:', err);
+      setError('Failed to initialize authentication.');
+      setLoading(false);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+        
         setUser(session?.user ?? null);
+        setError(null); // Clear any previous errors
+        
         if (session?.user) {
           await fetchProfile(session.user.id);
         } else {
@@ -48,11 +76,23 @@ export const useAuth = () => {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchProfile = async (userId: string) => {
+    if (!userId) {
+      console.error('No userId provided to fetchProfile');
+      setLoading(false);
+      return;
+    }
+    
     try {
+      setError(null); // Clear any previous errors
+      
       // Use maybeSingle() to handle cases where no profile exists without throwing an error
       const { data, error } = await supabase
         .from('profiles')
@@ -62,11 +102,13 @@ export const useAuth = () => {
 
       if (error) {
         console.error('Error fetching profile:', error);
+        setError('Failed to load profile. Please try again.');
         setLoading(false);
         return;
       }
 
       if (!data) {
+        console.log('No profile found, creating new profile...');
         // Profile doesn't exist, create one
         const newProfile = {
           id: userId,
@@ -102,20 +144,25 @@ export const useAuth = () => {
             
             if (fetchError) {
               console.error('Error fetching existing profile:', fetchError);
+              setError('Failed to load existing profile.');
             } else {
               setProfile(existingProfile);
             }
           } else {
             console.error('Error creating profile:', createError);
+            setError('Failed to create profile. Please try again.');
           }
         } else {
+          console.log('Profile created successfully');
           setProfile(createdProfile);
         }
       } else {
+        console.log('Profile loaded successfully');
         setProfile(data);
       }
     } catch (error) {
       console.error('Error in fetchProfile:', error);
+      setError('An unexpected error occurred while loading your profile.');
     } finally {
       setLoading(false);
     }
@@ -125,6 +172,7 @@ export const useAuth = () => {
     if (!user || !profile) return;
 
     try {
+      setError(null);
       const { data, error } = await supabase
         .from('profiles')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -137,19 +185,28 @@ export const useAuth = () => {
       return data;
     } catch (error) {
       console.error('Error updating profile:', error);
+      setError('Failed to update profile.');
       throw error;
     }
   };
 
   const signIn = async (email: string, password: string) => {
+    setError(null);
+    setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
     return { data, error };
   };
 
   const signUp = async (email: string, password: string, name: string) => {
+    setError(null);
+    setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -159,11 +216,19 @@ export const useAuth = () => {
         }
       }
     });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
     return { data, error };
   };
 
   const signOut = async () => {
+    setError(null);
     const { error } = await supabase.auth.signOut();
+    if (error) {
+      setError(error.message);
+    }
     return { error };
   };
 
@@ -171,6 +236,7 @@ export const useAuth = () => {
     user,
     profile,
     loading,
+    error,
     signIn,
     signUp,
     signOut,

@@ -131,7 +131,13 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
 
       // Process uploaded files
       console.log('📁 Processing uploaded files...');
-      const fileContent = await processUploadedFiles();
+      let fileContent = '';
+      try {
+        fileContent = await processUploadedFiles();
+      } catch (fileError) {
+        console.warn('Error processing files:', fileError);
+        // Continue without file content
+      }
       
       // Combine all information
       const enhancedInfo = `
@@ -171,7 +177,14 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
 
       // Generate AI study plan (with enhanced localized AI)
       console.log('🤖 Generating AI AP study plan...');
-      const plan = await aiEngine.generateStudyPlan(enhancedProfile, validGoals, enhancedInfo);
+      
+      // Add timeout for plan generation
+      const planPromise = aiEngine.generateStudyPlan(enhancedProfile, validGoals, enhancedInfo);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Study plan generation timed out')), 30000)
+      );
+      
+      const plan = await Promise.race([planPromise, timeoutPromise]);
       console.log('✅ AP study plan generated:', plan);
 
       // Validate the generated plan has required structure
@@ -199,11 +212,16 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
 
       // Deactivate existing active plans
       console.log('🔄 Deactivating existing plans...');
-      await supabase
+      const { error: deactivateError } = await supabase
         .from('study_plans')
         .update({ is_active: false })
         .eq('user_id', profile.id)
         .eq('is_active', true);
+      
+      if (deactivateError) {
+        console.warn('Error deactivating existing plans:', deactivateError);
+        // Continue anyway - this is not critical
+      }
 
       // Save to database
       console.log('💾 Saving AP study plan to database...');
@@ -236,19 +254,54 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
 
       // Update user profile with new preferences
       console.log('👤 Updating user profile...');
-      await updateProfile({
+      try {
+        await updateProfile({
+          weak_areas: validWeakAreas,
+          strong_areas: validStrongAreas,
+          learning_style: formData.learningStyle,
+          study_goals: validGoals
+        });
+      } catch (profileError) {
+        console.warn('Error updating profile:', profileError);
+        // Continue anyway - plan was saved successfully
+      }
+      
+      // Alternative profile update if the above fails
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({
         weak_areas: validWeakAreas,
         strong_areas: validStrongAreas,
         learning_style: formData.learningStyle,
-        study_goals: validGoals
-      });
+          study_goals: validGoals,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', profile.id);
+      
+      if (profileUpdateError) {
+        console.warn('Error updating profile directly:', profileUpdateError);
+      }
 
       console.log('🎉 AP study plan generation completed successfully');
       onPlanGenerated({ ...plan, id: data.id });
       onClose();
     } catch (error: any) {
       console.error('❌ Error generating AP study plan:', error);
-      setError(error.message || 'Failed to generate AP study plan. Please try again.');
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to generate AP study plan. Please try again.';
+      
+      if (error.message?.includes('timeout')) {
+        errorMessage = 'Study plan generation is taking too long. Please try again with simpler goals.';
+      } else if (error.message?.includes('network')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message?.includes('database')) {
+        errorMessage = 'Database error. Please try again in a moment.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

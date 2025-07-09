@@ -81,6 +81,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     if (!profile) return;
 
     try {
+      setError(''); // Clear any previous errors
+      
       const { data, error } = await supabase
         .from('study_plans')
         .select('*')
@@ -91,12 +93,20 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
 
       if (error) {
         console.error('Error fetching study plan:', error);
+        setError('Failed to load study plan. Some features may be limited.');
         return;
       }
 
       if (data && data.length > 0) {
         const planData = data[0];
-        setCurrentStudyPlan({
+        
+        // Validate plan data structure
+        if (!planData.subjects || !Array.isArray(planData.subjects)) {
+          console.warn('Invalid study plan structure, fixing...');
+          planData.subjects = [];
+        }
+        
+        const studyPlan = {
           id: planData.id,
           title: planData.title,
           description: planData.description,
@@ -109,10 +119,13 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
           personalizedRecommendations: planData.personalized_recommendations,
           estimatedOutcome: planData.estimated_outcome,
           confidence: planData.confidence
-        });
+        };
+        
+        setCurrentStudyPlan(studyPlan);
       }
     } catch (error) {
       console.error('Error fetching study plan:', error);
+      setError('Failed to load study plan. Please try refreshing the page.');
     }
   };
 
@@ -130,6 +143,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
 
       if (error) {
         console.error('Error fetching daily progress:', error);
+        // Don't show error for daily progress as it's not critical
         return;
       }
 
@@ -144,6 +158,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
       }
     } catch (error) {
       console.error('Error fetching daily progress:', error);
+      // Don't show error for daily progress as it's not critical
     }
   };
 
@@ -160,6 +175,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
       setStudyTasks([]);
       return;
     }
+    
     const tasks: any[] = [];
     
     // Generate tasks based on AP study plan subjects
@@ -167,6 +183,20 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
       // Ensure subject has topics array
       if (!subject || !subject.topics || !Array.isArray(subject.topics)) {
         console.warn('Subject topics is not a valid array for subject:', subject.name);
+        // Create a default topic for this subject
+        const defaultTopic = {
+          name: `${subject?.name || 'AP Subject'} Fundamentals`,
+          difficulty: 'Intermediate',
+          estimatedTime: 45,
+          prerequisites: [],
+          learningObjectives: [`Master ${subject?.name || 'AP'} basics`],
+          resources: [],
+          assessments: []
+        };
+        
+        if (subject) {
+          subject.topics = [defaultTopic];
+        }
         return;
       }
       

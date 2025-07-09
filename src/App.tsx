@@ -19,7 +19,7 @@ import Auth from './components/Auth';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
-  const { user, profile, loading, signOut } = useAuth();
+  const { user, profile, loading, error, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showTimer, setShowTimer] = useState(false);
 
@@ -33,11 +33,57 @@ function App() {
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Apollo AP Prep</h1>
           <p className="text-gray-300">Loading your AP preparation journey...</p>
+          
+          {/* Loading spinner */}
+          <div className="flex justify-center mb-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+          </div>
+          
+          {/* Error display */}
+          {error && (
+            <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg max-w-md mx-auto">
+              <p className="text-red-400 text-sm">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-2 text-red-300 hover:text-red-200 text-sm underline"
+              >
+                Refresh Page
+              </button>
+            </div>
+          )}
+          
+          {/* Fallback button after extended loading */}
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 text-purple-400 hover:text-purple-300 text-sm underline"
+          >
+            Taking too long? Click to refresh
+          </button>
         </div>
       </div>
     );
   }
 
+  // Show error screen if there's a critical error
+  if (error && !loading && !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Connection Error</h1>
+          <p className="text-gray-300 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
   // Show auth screen if not authenticated
   if (!user || !profile) {
     return <Auth />;
