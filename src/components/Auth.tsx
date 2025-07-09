@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, Mail, Lock, User, Eye, EyeOff, Loader } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
