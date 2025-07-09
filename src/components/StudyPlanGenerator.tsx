@@ -85,27 +85,6 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
     }));
   };
 
-  const processUploadedFiles = async (): Promise<string> => {
-    if (formData.uploadedFiles.length === 0) return '';
-
-    let extractedText = '';
-    
-    for (const file of formData.uploadedFiles) {
-      try {
-        if (file.type === 'text/plain') {
-          const text = await file.text();
-          extractedText += `\n\nFrom ${file.name}:\n${text}`;
-        } else {
-          extractedText += `\n\nUploaded file: ${file.name} (${file.type}) - Content analysis will be performed by AI`;
-        }
-      } catch (error) {
-        console.error('Error processing file:', file.name, error);
-      }
-    }
-
-    return extractedText;
-  };
-
   const generateStudyPlan = async () => {
     if (!profile) {
       setError('Profile not found. Please try refreshing the page.');
