@@ -163,14 +163,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   };
 
   const generateAPRecommendedTasks = () => {
-    if (!currentStudyPlan || !profile) {
+    if (!currentStudyPlan || !profile || !currentStudyPlan.subjects) {
       console.warn('Missing study plan or profile for task generation');
       setStudyTasks([]);
       return;
     }
 
     // Validate that currentStudyPlan has proper structure
-    if (!currentStudyPlan.subjects || !Array.isArray(currentStudyPlan.subjects)) {
+    if (!Array.isArray(currentStudyPlan.subjects)) {
       console.warn('Study plan subjects is not a valid array:', currentStudyPlan.subjects);
       setStudyTasks([]);
       return;
@@ -180,8 +180,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
     
     // Generate tasks based on AP study plan subjects
     currentStudyPlan.subjects.forEach((subject, index) => {
+      // Validate subject structure
+      if (!subject || typeof subject !== 'object') {
+        console.warn('Invalid subject object at index', index, ':', subject);
+        return;
+      }
+      
       // Ensure subject has topics array
-      if (!subject || !subject.topics || !Array.isArray(subject.topics)) {
+      if (!subject.topics || !Array.isArray(subject.topics)) {
         console.warn('Subject topics is not a valid array for subject:', subject.name);
         // Create a default topic for this subject
         const defaultTopic = {
@@ -194,37 +200,64 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
           assessments: []
         };
         
-        if (subject) {
-          subject.topics = [defaultTopic];
-        }
-        return;
+        subject.topics = [defaultTopic];
       }
       
       subject.topics.forEach((topic, topicIndex) => {
-        // Ensure topic has required properties
+        // Validate topic structure
         if (!topic || typeof topic !== 'object') {
           console.warn('Invalid topic object:', topic);
           return;
         }
         
-        if (tasks.length < 6) { // Limit to 6 tasks
-          tasks.push({
-            id: `${index}-${topicIndex}`,
-            type: getAPTaskType(subject.name || 'AP Subject', topic.difficulty || 'Intermediate'),
-            subject: subject.name || 'AP Subject',
-            topic: topic.name || 'AP Study Topic',
-            difficulty: topic.difficulty || 'Intermediate',
-            duration: topic.estimatedTime || 30,
-            stars: calculateAPStars(topic.difficulty || 'Intermediate'),
-            description: `Master ${topic.name || 'AP concepts'} with ${getAPTaskType(subject.name || 'AP Subject', topic.difficulty || 'Intermediate').toLowerCase()}`,
-            aiRecommended: (subject.priority || 'medium') === 'high',
-            learningStyle: profile.learning_style || 'visual',
-            prerequisites: topic.prerequisites || [],
-            learningObjectives: topic.learningObjectives || [],
-            resources: topic.resources || [],
-            assessments: topic.assessments || []
-          });
+        // Ensure topic has required properties
+        if (!topic.name) {
+          console.warn('Topic missing name property:', topic);
+          topic.name = `${subject.name} Topic ${topicIndex + 1}`;
         }
+        
+        if (!topic.difficulty) {
+          topic.difficulty = 'Intermediate';
+        }
+        
+        if (!topic.estimatedTime) {
+          topic.estimatedTime = 30;
+        }
+        
+        // Ensure arrays exist
+        if (!Array.isArray(topic.prerequisites)) {
+          topic.prerequisites = [];
+        }
+        if (!Array.isArray(topic.learningObjectives)) {
+          topic.learningObjectives = [`Master ${topic.name} concepts`];
+        }
+        if (!Array.isArray(topic.resources)) {
+          topic.resources = [];
+        }
+        if (!Array.isArray(topic.assessments)) {
+          topic.assessments = [];
+        }
+        
+        if (tasks.length >= 6) {
+          return;
+        }
+        
+        tasks.push({
+          id: `${index}-${topicIndex}`,
+          type: getAPTaskType(subject.name || 'AP Subject', topic.difficulty),
+          subject: subject.name || 'AP Subject',
+          topic: topic.name,
+          difficulty: topic.difficulty,
+          duration: topic.estimatedTime,
+          stars: calculateAPStars(topic.difficulty),
+          description: `Master ${topic.name} with ${getAPTaskType(subject.name || 'AP Subject', topic.difficulty).toLowerCase()}`,
+          aiRecommended: (subject.priority || 'medium') === 'high',
+          learningStyle: profile.learning_style || 'visual',
+          prerequisites: topic.prerequisites,
+          learningObjectives: topic.learningObjectives,
+          resources: topic.resources,
+          assessments: topic.assessments
+        });
       });
     });
 
@@ -339,7 +372,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   };
 
   const generatePersonalizedFocusTask = () => {
-    if (!currentStudyPlan) return null;
+    if (!currentStudyPlan || !currentStudyPlan.subjects || !Array.isArray(currentStudyPlan.subjects)) {
+      return null;
+    }
     
     // Find high priority AP subjects (weak areas) or use user's weak areas
     let focusSubjects = currentStudyPlan.subjects.filter(s => s && s.priority === 'high');
@@ -417,7 +452,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   };
 
   const generatePersonalizedQuickReview = () => {
-    if (!currentStudyPlan) return null;
+    if (!currentStudyPlan || !currentStudyPlan.subjects || !Array.isArray(currentStudyPlan.subjects)) {
+      return null;
+    }
     
     // Get recently studied topics from completed tasks
     let recentTopics = studyTasks
@@ -461,7 +498,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   };
 
   const generatePersonalizedChallenge = () => {
-    if (!currentStudyPlan) return null;
+    if (!currentStudyPlan || !currentStudyPlan.subjects || !Array.isArray(currentStudyPlan.subjects)) {
+      return null;
+    }
     
     // Find advanced topics from AP study plan
     let challengeSubjects = currentStudyPlan.subjects.filter(s => 

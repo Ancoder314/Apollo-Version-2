@@ -178,13 +178,8 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
       // Generate AI study plan (with enhanced localized AI)
       console.log('🤖 Generating AI AP study plan...');
       
-      // Add timeout for plan generation
-      const planPromise = aiEngine.generateStudyPlan(enhancedProfile, validGoals, enhancedInfo);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Study plan generation timed out')), 30000)
-      );
-      
-      const plan = await Promise.race([planPromise, timeoutPromise]);
+      // Generate plan with proper error handling
+      const plan = await aiEngine.generateStudyPlan(enhancedProfile, validGoals, enhancedInfo);
       console.log('✅ AP study plan generated:', plan);
 
       // Validate the generated plan has required structure
@@ -194,19 +189,32 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
 
       // Ensure each subject has topics array
       plan.subjects.forEach((subject, index) => {
-        if (!subject.topics || !Array.isArray(subject.topics)) {
+        if (!subject || !subject.topics || !Array.isArray(subject.topics)) {
           console.warn(`Subject ${subject.name} missing topics, adding default topics`);
-          subject.topics = [
+          const defaultTopics = [
             {
-              name: `${subject.name} Fundamentals`,
+              name: `${subject?.name || 'AP Subject'} Fundamentals`,
               difficulty: 'Intermediate',
               estimatedTime: 45,
               prerequisites: [],
-              learningObjectives: [`Master ${subject.name} basics`],
+              learningObjectives: [`Master ${subject?.name || 'AP'} basics`],
               resources: [],
               assessments: []
             }
           ];
+          
+          if (subject) {
+            subject.topics = defaultTopics;
+          } else {
+            // Replace invalid subject with default
+            plan.subjects[index] = {
+              name: 'AP Study Skills',
+              priority: 'medium' as const,
+              timeAllocation: 25,
+              topics: defaultTopics,
+              reasoning: 'Default subject added due to invalid data'
+            };
+          }
         }
       });
 
@@ -255,31 +263,38 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
       // Update user profile with new preferences
       console.log('👤 Updating user profile...');
       try {
-        await updateProfile({
+        const profileUpdate = {
           weak_areas: validWeakAreas,
           strong_areas: validStrongAreas,
           learning_style: formData.learningStyle,
           study_goals: validGoals
-        });
+        };
+        
+        await updateProfile(profileUpdate);
+        console.log('✅ Profile updated successfully');
       } catch (profileError) {
-        console.warn('Error updating profile:', profileError);
-        // Continue anyway - plan was saved successfully
-      }
-      
-      // Alternative profile update if the above fails
-      const { error: profileUpdateError } = await supabase
-        .from('profiles')
-        .update({
-        weak_areas: validWeakAreas,
-        strong_areas: validStrongAreas,
-        learning_style: formData.learningStyle,
-          study_goals: validGoals,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', profile.id);
-      
-      if (profileUpdateError) {
-        console.warn('Error updating profile directly:', profileUpdateError);
+        console.warn('⚠️ Error updating profile:', profileError);
+        // Try direct database update as fallback
+        try {
+          const { error: directUpdateError } = await supabase
+            .from('profiles')
+            .update({
+              weak_areas: validWeakAreas,
+              strong_areas: validStrongAreas,
+              learning_style: formData.learningStyle,
+              study_goals: validGoals,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', profile.id);
+          
+          if (directUpdateError) {
+            console.warn('⚠️ Direct profile update also failed:', directUpdateError);
+          } else {
+            console.log('✅ Profile updated via direct database call');
+          }
+        } catch (fallbackError) {
+          console.warn('⚠️ All profile update methods failed:', fallbackError);
+        }
       }
 
       console.log('🎉 AP study plan generation completed successfully');
@@ -291,12 +306,14 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
       // Provide more specific error messages
       let errorMessage = 'Failed to generate AP study plan. Please try again.';
       
-      if (error.message?.includes('timeout')) {
-        errorMessage = 'Study plan generation is taking too long. Please try again with simpler goals.';
+      if (error.message?.includes('Invalid input')) {
+        errorMessage = 'Please check your goals and try again. Make sure to provide at least one clear AP learning goal.';
       } else if (error.message?.includes('network')) {
         errorMessage = 'Network error. Please check your connection and try again.';
       } else if (error.message?.includes('database')) {
         errorMessage = 'Database error. Please try again in a moment.';
+      } else if (error.message?.includes('subjects identified')) {
+        errorMessage = 'Could not identify AP subjects from your goals. Please be more specific about which AP courses you want to study.';
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -305,6 +322,33 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
     } finally {
       setLoading(false);
     }
+  };
+
+  const processUploadedFiles = async (): Promise<string> => {
+    if (formData.uploadedFiles.length === 0) return '';
+
+    let extractedText = '';
+    
+    try {
+      for (const file of formData.uploadedFiles) {
+        try {
+          if (file.type === 'text/plain') {
+            const text = await file.text();
+            extractedText += `\n\nFrom ${file.name}:\n${text}`;
+          } else {
+            extractedText += `\n\nUploaded file: ${file.name} (${file.type}) - Content analysis will be performed by AI`;
+          }
+        } catch (fileError) {
+          console.error('Error processing file:', file.name, fileError);
+          extractedText += `\n\nFile ${file.name} could not be processed`;
+        }
+      }
+    } catch (error) {
+      console.error('Error in file processing:', error);
+      throw new Error('Failed to process uploaded files');
+    }
+
+    return extractedText;
   };
 
   const hasOpenAIKey = import.meta.env.VITE_OPENAI_API_KEY && 
