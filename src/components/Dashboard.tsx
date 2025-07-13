@@ -238,7 +238,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
           topic.assessments = [];
         }
         
-        if (tasks.length >= 6) {
+        if (tasks.length >= 12) {
           return;
         }
         

@@ -1019,6 +1019,178 @@ class APCourseEngine {
     }
   }
 
+  async generatePracticeQuestions(subject: string, topic: string, difficulty: string, userProfile: UserProfile): Promise<any[]> {
+    console.log(`📝 Generating practice questions for ${subject} - ${topic}`);
+    
+    try {
+      // Generate comprehensive question sets for the topic
+      const questionSets = [];
+      
+      // Generate 5 different types of question sets with more questions each
+      const questionTypes = ['conceptual', 'application', 'analysis', 'synthesis', 'evaluation'];
+      
+      for (const type of questionTypes) {
+        const questionSet = {
+          type: type,
+          title: `${type.charAt(0).toUpperCase() + type.slice(1)} Questions - ${topic}`,
+          description: `${type.charAt(0).toUpperCase() + type.slice(1)} questions for ${topic} in ${subject}`,
+          questions: []
+        };
+        
+        // Generate 6-10 questions per set
+        const numQuestions = 6 + Math.floor(Math.random() * 5);
+        
+        for (let i = 0; i < numQuestions; i++) {
+          const question = this.generateAPQuestion(subject, topic, difficulty, type, userProfile);
+          questionSet.questions.push(question);
+        }
+        
+        questionSets.push(questionSet);
+      }
+      
+      return questionSets;
+    } catch (error) {
+      console.error('Error generating practice questions:', error);
+      throw error;
+    }
+  }
+
+  private generateAPQuestion(subject: string, topic: string, difficulty: string, type: string, userProfile?: any) {
+    const difficultyMap = {
+      'beginner': 'foundational',
+      'intermediate': 'standard',
+      'advanced': 'challenging',
+      'expert': 'complex'
+    };
+    
+    const actualDifficulty = difficultyMap[difficulty.toLowerCase() as keyof typeof difficultyMap] || 'standard';
+    
+    // Enhanced question generation with more variety
+    const questionTemplates = {
+      conceptual: [
+        `What is the fundamental principle behind ${topic} in ${subject}?`,
+        `How does ${topic} relate to other concepts in ${subject}?`,
+        `Which statement best describes ${topic}?`,
+        `What are the key characteristics of ${topic}?`,
+        `How is ${topic} defined in the context of ${subject}?`,
+        `What makes ${topic} important in ${subject}?`
+      ],
+      application: [
+        `How would you apply ${topic} to solve this ${subject} problem?`,
+        `In what scenario would you use ${topic} principles?`,
+        `Given a real-world situation, how does ${topic} help?`,
+        `What steps would you take to implement ${topic}?`,
+        `How can ${topic} be used to analyze this situation?`,
+        `What is the best approach using ${topic} for this problem?`
+      ],
+      analysis: [
+        `Analyze the relationship between ${topic} and related concepts.`,
+        `What factors influence ${topic} in ${subject}?`,
+        `Compare and contrast different aspects of ${topic}.`,
+        `What are the implications of ${topic} in this context?`,
+        `How do changes in variables affect ${topic}?`,
+        `What patterns can you identify in ${topic}?`
+      ],
+      synthesis: [
+        `Combine ${topic} with other ${subject} concepts to create a solution.`,
+        `How would you integrate ${topic} into a comprehensive approach?`,
+        `Design a strategy that incorporates ${topic} principles.`,
+        `Create a model that demonstrates ${topic} applications.`,
+        `Develop a framework using ${topic} as a foundation.`,
+        `Synthesize multiple ${topic} concepts into a unified theory.`
+      ],
+      evaluation: [
+        `Evaluate the effectiveness of ${topic} in this scenario.`,
+        `What are the strengths and weaknesses of ${topic}?`,
+        `Judge the validity of this ${topic} application.`,
+        `Assess the impact of ${topic} on the overall system.`,
+        `Critique the use of ${topic} in this context.`,
+        `Determine the best ${topic} approach for this situation.`
+      ]
+    };
+    
+    const templates = questionTemplates[type as keyof typeof questionTemplates] || questionTemplates.conceptual;
+    const questionText = templates[Math.floor(Math.random() * templates.length)];
+    
+    // Generate more diverse options
+    const options = this.generateQuestionOptions(subject, topic, type, actualDifficulty);
+    const correctIndex = Math.floor(Math.random() * options.length);
+    
+    return {
+      type: 'multiple_choice',
+      question: questionText,
+      options: options,
+      correctAnswer: correctIndex,
+      explanation: `This ${type} question tests your understanding of ${topic} in ${subject}. The correct answer demonstrates ${actualDifficulty} level mastery of the concept.`,
+      hint: `Consider the fundamental principles of ${topic} and how they apply in ${subject}.`,
+      points: this.calculateQuestionPoints(actualDifficulty, type),
+      concepts: [topic, subject, type],
+      apSkills: this.getAPSkillsForType(type),
+      difficulty: actualDifficulty
+    };
+  }
+  
+  private generateQuestionOptions(subject: string, topic: string, type: string, difficulty: string): string[] {
+    const baseOptions = [
+      `Correct application of ${topic} principles`,
+      `Partial understanding of ${topic} concepts`,
+      `Incorrect interpretation of ${topic}`,
+      `Unrelated ${subject} concept`
+    ];
+    
+    // Add more sophisticated options based on difficulty
+    if (difficulty === 'challenging' || difficulty === 'complex') {
+      return [
+        `Advanced ${topic} application with proper reasoning`,
+        `Standard ${topic} approach with minor errors`,
+        `Basic ${topic} understanding without depth`,
+        `Misconception about ${topic} fundamentals`,
+        `Confusion between ${topic} and related concepts`,
+        `Incomplete analysis of ${topic} implications`
+      ];
+    }
+    
+    return baseOptions;
+  }
+  
+  private calculateQuestionPoints(difficulty: string, type: string): number {
+    const basePoints = {
+      'foundational': 8,
+      'standard': 12,
+      'challenging': 18,
+      'complex': 25
+    };
+    
+    const typeMultiplier = {
+      'conceptual': 1.0,
+      'application': 1.2,
+      'analysis': 1.4,
+      'synthesis': 1.6,
+      'evaluation': 1.8
+    };
+    
+    const base = basePoints[difficulty as keyof typeof basePoints] || 12;
+    const multiplier = typeMultiplier[type as keyof typeof typeMultiplier] || 1.0;
+    
+    return Math.round(base * multiplier);
+  }
+  
+  private getAPSkillsForType(type: string): string[] {
+    const skillMap = {
+      'conceptual': ['Knowledge', 'Comprehension'],
+      'application': ['Application', 'Problem Solving'],
+      'analysis': ['Analysis', 'Critical Thinking'],
+      'synthesis': ['Synthesis', 'Creative Thinking'],
+      'evaluation': ['Evaluation', 'Judgment']
+    };
+    
+    return skillMap[type as keyof typeof skillMap] || ['Knowledge'];
+  }
+
+  private generateQuestionForTopic(subject: string, topic: string, type: string, difficulty: string): string {
+    return this.generateAPQuestion(subject, topic, difficulty, type.toLowerCase()).question;
+  }
+
   private generateContextualQuestion(subject: string, topic: string, difficulty: string): string {
     const questionBank = this.getQuestionBank();
     const subjectQuestions = questionBank[subject as keyof typeof questionBank];
