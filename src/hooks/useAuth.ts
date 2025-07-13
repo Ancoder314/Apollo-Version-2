@@ -17,6 +17,7 @@ export interface UserProfile {
   study_goals: string[];
   created_at: string;
   updated_at: string;
+  isGuest?: boolean;
 }
 
 export const useAuth = () => {
@@ -26,10 +27,21 @@ export const useAuth = () => {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isGuestMode, setIsGuestMode] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     let timeoutId: NodeJS.Timeout;
+    
+    // Check if user is in guest mode
+    const guestMode = localStorage.getItem('apollo_guest_mode');
+    if (guestMode === 'true') {
+      setIsGuestMode(true);
+      const guestProfile = getGuestProfile();
+      setProfile(guestProfile);
+      setLoading(false);
+      return;
+    }
     
     const initializeAuth = async () => {
       try {
@@ -121,6 +133,37 @@ export const useAuth = () => {
     };
   }, [retryCount]); // Add retryCount as dependency
 
+  const getGuestProfile = (): UserProfile => {
+    const savedProfile = localStorage.getItem('apollo_guest_profile');
+    if (savedProfile) {
+      return JSON.parse(savedProfile);
+    }
+    
+    const defaultProfile: UserProfile = {
+      id: 'guest-user',
+      email: 'guest@apollo.local',
+      name: 'Guest User',
+      level: 1,
+      total_stars: 0,
+      current_streak: 0,
+      study_time: 0,
+      completed_lessons: 0,
+      weak_areas: [],
+      strong_areas: [],
+      learning_style: 'visual',
+      study_goals: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      isGuest: true
+    };
+    
+    localStorage.setItem('apollo_guest_profile', JSON.stringify(defaultProfile));
+    return defaultProfile;
+  };
+
+  const saveGuestProfile = (profile: UserProfile) => {
+    localStorage.setItem('apollo_guest_profile', JSON.stringify(profile));
+  };
   const fetchProfile = async (userId: string) => {
     if (!userId) {
       console.error('No userId provided to fetchProfile');
@@ -217,7 +260,17 @@ export const useAuth = () => {
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user || !profile) return;
+    if (!profile) return;
+    
+    // Handle guest mode updates
+    if (isGuestMode || profile.isGuest) {
+      const updatedProfile = { ...profile, ...updates, updated_at: new Date().toISOString() };
+      setProfile(updatedProfile);
+      saveGuestProfile(updatedProfile);
+      return updatedProfile;
+    }
+    
+    if (!user) return;
 
     try {
       setError(null);
@@ -238,6 +291,14 @@ export const useAuth = () => {
     }
   };
 
+  const signInAsGuest = () => {
+    setIsGuestMode(true);
+    localStorage.setItem('apollo_guest_mode', 'true');
+    const guestProfile = getGuestProfile();
+    setProfile(guestProfile);
+    setLoading(false);
+    setError(null);
+  };
   const signIn = async (email: string, password: string) => {
     setError(null);
     setLoading(true);
@@ -309,6 +370,16 @@ export const useAuth = () => {
 
   const signOut = async () => {
     setError(null);
+    
+    // Handle guest mode sign out
+    if (isGuestMode) {
+      setIsGuestMode(false);
+      setProfile(null);
+      localStorage.removeItem('apollo_guest_mode');
+      localStorage.removeItem('apollo_guest_profile');
+      return { error: null };
+    }
+    
     const { error } = await supabase.auth.signOut();
     if (error) {
       setError(error.message);
@@ -329,10 +400,12 @@ export const useAuth = () => {
     loading,
     error,
     isRetrying,
+    isGuestMode,
     retry,
     signIn,
     signUp,
     signOut,
+    signInAsGuest,
     updateProfile,
     fetchProfile
   };

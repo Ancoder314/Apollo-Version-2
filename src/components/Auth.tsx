@@ -11,7 +11,7 @@ const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { signIn, signUp, error: authError, isRetrying } = useAuth();
+  const { signIn, signUp, signInAsGuest, error: authError, isRetrying } = useAuth();
 
   // Display auth hook errors
   useEffect(() => {
@@ -69,6 +69,11 @@ const Auth: React.FC = () => {
     }
   };
 
+  const handleGuestMode = () => {
+    setLoading(true);
+    setError('');
+    signInAsGuest();
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
       {/* Animated background stars */}
@@ -195,6 +200,39 @@ const Auth: React.FC = () => {
             </button>
           </form>
 
+          {/* Guest Mode Option */}
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-600"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-slate-800 text-gray-400">or</span>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleGuestMode}
+              disabled={loading}
+              className="w-full mt-4 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-700 disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition-all duration-200 hover:scale-[1.02] disabled:scale-100 flex items-center justify-center space-x-2"
+            >
+              {loading ? (
+                <>
+                  <Loader className="w-5 h-5 animate-spin" />
+                  <span>Starting Guest Mode...</span>
+                </>
+              ) : (
+                <>
+                  <User className="w-5 h-5" />
+                  <span>Continue as Guest</span>
+                </>
+              )}
+            </button>
+            
+            <p className="text-gray-400 text-xs text-center mt-2">
+              Guest mode: Progress saved locally only, not synced across devices
+            </p>
+          </div>
           <div className="mt-6 text-center">
             <button
               onClick={() => setIsSignUp(!isSignUp)}

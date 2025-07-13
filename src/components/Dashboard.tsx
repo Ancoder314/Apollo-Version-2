@@ -32,7 +32,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
-  const { profile, updateProfile } = useAuth();
+  const { profile, updateProfile, isGuestMode } = useAuth();
   const [activeTask, setActiveTask] = useState<any>(null);
   const [showStudySession, setShowStudySession] = useState(false);
   const [showPlanGenerator, setShowPlanGenerator] = useState(false);
@@ -80,6 +80,19 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   const fetchActiveStudyPlan = async () => {
     if (!profile) return;
 
+    // For guest mode, try to load from localStorage
+    if (isGuestMode) {
+      const savedPlan = localStorage.getItem(`apollo_guest_study_plan_${profile.id}`);
+      if (savedPlan) {
+        try {
+          const planData = JSON.parse(savedPlan);
+          setCurrentStudyPlan(planData);
+        } catch (error) {
+          console.error('Error parsing saved guest study plan:', error);
+        }
+      }
+      return;
+    }
     try {
       setError(''); // Clear any previous errors
       
@@ -132,6 +145,25 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
   const fetchDailyProgress = async () => {
     if (!profile) return;
 
+    // For guest mode, load from localStorage
+    if (isGuestMode) {
+      const today = new Date().toISOString().split('T')[0];
+      const savedProgress = localStorage.getItem(`apollo_guest_daily_progress_${profile.id}_${today}`);
+      if (savedProgress) {
+        try {
+          const progressData = JSON.parse(savedProgress);
+          setDailyProgress(prev => ({
+            ...prev,
+            studyTime: progressData.study_time || 0,
+            lessonsCompleted: progressData.lessons_completed || 0,
+            starsEarned: progressData.stars_earned || 0
+          }));
+        } catch (error) {
+          console.error('Error parsing saved guest daily progress:', error);
+        }
+      }
+      return;
+    }
     const today = new Date().toISOString().split('T')[0];
 
     try {
@@ -319,45 +351,85 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
         level: Math.max(profile.level, newLevel)
       });
 
-      // Record study session
-      await supabase.from('study_sessions').insert({
-        user_id: profile.id,
-        subject: activeTask.subject,
-        topic: activeTask.topic,
-        duration: activeTask.duration,
-        stars_earned: earnedStars,
-        accuracy: performance.accuracy,
-        session_data: performance
-      });
+      // For guest mode, save session data locally
+      if (isGuestMode) {
+        const sessionData = {
+          user_id: profile.id,
+          subject: activeTask.subject,
+          topic: activeTask.topic,
+          duration: activeTask.duration,
+          stars_earned: earnedStars,
+          accuracy: performance.accuracy,
+          session_data: performance,
+          completed_at: new Date().toISOString()
+        };
+        
+        const existingSessions = JSON.parse(localStorage.getItem(`apollo_guest_sessions_${profile.id}`) || '[]');
+        existingSessions.push(sessionData);
+        localStorage.setItem(`apollo_guest_sessions_${profile.id}`, JSON.stringify(existingSessions));
+      } else {
+        // Record study session in database
+        await supabase.from('study_sessions').insert({
+          user_id: profile.id,
+          subject: activeTask.subject,
+          topic: activeTask.topic,
+          duration: activeTask.duration,
+          stars_earned: earnedStars,
+          accuracy: performance.accuracy,
+          session_data: performance
+        });
+      }
 
       // Update daily progress
       const today = new Date().toISOString().split('T')[0];
-      const { data: existingProgress } = await supabase
-        .from('daily_progress')
-        .select('*')
-        .eq('user_id', profile.id)
-        .eq('date', today);
-
-      if (existingProgress && existingProgress.length > 0) {
-        const progressData = existingProgress[0];
-        await supabase
-          .from('daily_progress')
-          .update({
-            study_time: progressData.study_time + activeTask.duration,
-            lessons_completed: progressData.lessons_completed + 1,
-            stars_earned: progressData.stars_earned + earnedStars,
-            subjects_studied: Array.from(new Set([...progressData.subjects_studied, activeTask.subject]))
-          })
-          .eq('id', progressData.id);
+      
+      if (isGuestMode) {
+        // Update guest daily progress
+        const savedProgress = localStorage.getItem(`apollo_guest_daily_progress_${profile.id}_${today}`);
+        const currentProgress = savedProgress ? JSON.parse(savedProgress) : {
+          study_time: 0,
+          lessons_completed: 0,
+          stars_earned: 0,
+          subjects_studied: []
+        };
+        
+        const updatedProgress = {
+          study_time: currentProgress.study_time + activeTask.duration,
+          lessons_completed: currentProgress.lessons_completed + 1,
+          stars_earned: currentProgress.stars_earned + earnedStars,
+          subjects_studied: Array.from(new Set([...currentProgress.subjects_studied, activeTask.subject]))
+        };
+        
+        localStorage.setItem(`apollo_guest_daily_progress_${profile.id}_${today}`, JSON.stringify(updatedProgress));
       } else {
-        await supabase.from('daily_progress').insert({
-          user_id: profile.id,
-          date: today,
-          study_time: activeTask.duration,
-          lessons_completed: 1,
-          stars_earned: earnedStars,
-          subjects_studied: [activeTask.subject]
-        });
+        // Update database daily progress
+        const { data: existingProgress } = await supabase
+          .from('daily_progress')
+          .select('*')
+          .eq('user_id', profile.id)
+          .eq('date', today);
+
+        if (existingProgress && existingProgress.length > 0) {
+          const progressData = existingProgress[0];
+          await supabase
+            .from('daily_progress')
+            .update({
+              study_time: progressData.study_time + activeTask.duration,
+              lessons_completed: progressData.lessons_completed + 1,
+              stars_earned: progressData.stars_earned + earnedStars,
+              subjects_studied: Array.from(new Set([...progressData.subjects_studied, activeTask.subject]))
+            })
+            .eq('id', progressData.id);
+        } else {
+          await supabase.from('daily_progress').insert({
+            user_id: profile.id,
+            date: today,
+            study_time: activeTask.duration,
+            lessons_completed: 1,
+            stars_earned: earnedStars,
+            subjects_studied: [activeTask.subject]
+          });
+        }
       }
 
       // Refresh daily progress
@@ -681,6 +753,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
           <div>
             <h2 className="text-2xl font-bold text-white mb-2">
               Welcome back, {profile.name}! 🎓
+              {isGuestMode && <span className="text-yellow-400 text-lg"> (Guest Mode)</span>}
             </h2>
             <p className="text-gray-300">
               {currentStudyPlan 
@@ -688,6 +761,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
                 : 'Ready to create your personalized AP study plan?'
               }
             </p>
+            {isGuestMode && (
+              <p className="text-yellow-300 text-sm mt-1">
+                📝 Your progress is saved locally. Create an account to sync across devices.
+              </p>
+            )}
             {currentStudyPlan && (
               <div className="mt-2 flex items-center space-x-4 text-sm">
                 <span className="text-purple-400">
@@ -754,6 +832,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
               <h3 className="text-xl font-bold text-white mb-2">Create Your AI AP Study Plan</h3>
               <p className="text-gray-300 mb-4">
                 Unlock personalized AP study sessions, focus areas, quick reviews, and challenges by creating your AI-powered AP study plan.
+                {isGuestMode && <span className="text-yellow-300"> Your plan will be saved locally in guest mode.</span>}
               </p>
               <button
                 onClick={() => setShowPlanGenerator(true)}
@@ -953,6 +1032,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
         <StudyPlanGenerator
           onClose={() => setShowPlanGenerator(false)}
           onPlanGenerated={(plan) => {
+            // Save plan for guest mode
+            if (isGuestMode) {
+              localStorage.setItem(`apollo_guest_study_plan_${profile.id}`, JSON.stringify(plan));
+            }
             setCurrentStudyPlan(plan);
             setShowPlanGenerator(false);
             // Refresh the page data

@@ -19,7 +19,7 @@ import Auth from './components/Auth';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
-  const { user, profile, loading, error, isRetrying, retry, signOut } = useAuth();
+  const { user, profile, loading, error, isRetrying, retry, signOut, isGuestMode } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showTimer, setShowTimer] = useState(false);
 
@@ -69,7 +69,7 @@ function App() {
   }
 
   // Show error screen if there's a critical error
-  if (error && !loading && !user) {
+  if (error && !loading && !user && !isGuestMode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
@@ -98,7 +98,7 @@ function App() {
   }
   
   // Show auth screen if not authenticated
-  if (!user || !profile) {
+  if ((!user && !isGuestMode) || !profile) {
     return <Auth />;
   }
 
@@ -160,6 +160,11 @@ function App() {
                   <Star className="w-5 h-5 text-white" />
                 </div>
                 <h1 className="text-xl font-bold text-white">Apollo AP Prep</h1>
+                {isGuestMode && (
+                  <span className="bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded text-xs font-medium">
+                    Guest Mode
+                  </span>
+                )}
               </div>
               
               <div className="flex items-center space-x-4">
@@ -181,7 +186,7 @@ function App() {
                 <button
                   onClick={handleSignOut}
                   className="text-gray-400 hover:text-white transition-colors p-2"
-                  title="Sign Out"
+                  title={isGuestMode ? "Exit Guest Mode" : "Sign Out"}
                 >
                   <LogOut className="w-5 h-5" />
                 </button>
@@ -195,6 +200,19 @@ function App() {
           {/* Sidebar Navigation */}
           <nav className="w-64 bg-slate-800/60 backdrop-blur-sm h-screen sticky top-0 border-r border-slate-700/50">
             <div className="p-6">
+              {/* Guest Mode Notice */}
+              {isGuestMode && (
+                <div className="mb-6 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <User className="w-4 h-4 text-yellow-400" />
+                    <span className="text-yellow-400 font-semibold text-sm">Guest Mode</span>
+                  </div>
+                  <p className="text-yellow-300 text-xs">
+                    Progress saved locally only. Create an account to sync across devices.
+                  </p>
+                </div>
+              )}
+              
               <div className="space-y-2">
                 {navItems.map((item) => {
                   const Icon = item.icon;
