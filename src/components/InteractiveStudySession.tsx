@@ -115,8 +115,7 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
         task.subject, 
         task.topic, 
         task.difficulty, 
-        learningStyle,
-        profile?.study_goals
+        learningStyle
       );
       
       // Generate multiple questions for a comprehensive session
