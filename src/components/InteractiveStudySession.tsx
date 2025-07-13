@@ -157,7 +157,7 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
       // Add questions from question sets
       if (questionSets.length > 0) {
         questionSets.forEach(questionSet => {
-          questionSet.questions.slice(0, 3).forEach(question => { // Limit to 3 questions per set
+          questionSet.questions.slice(0, 6).forEach(question => { // Increased to 6 questions per set
             sessionContent.push({
               type: question.type,
               title: `${task.topic} - ${questionSet.title}`,
@@ -177,8 +177,8 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
           });
         });
       } else {
-        // Generate additional practice questions if no question sets available
-        for (let i = 0; i < 3; i++) {
+        // Generate more practice questions if no question sets available
+        for (let i = 0; i < 8; i++) {
           sessionContent.push(generatePracticeQuestion(i));
         }
       }
