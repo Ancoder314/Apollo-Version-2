@@ -74,6 +74,11 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
   // Generate study content when component mounts
   useEffect(() => {
     const generateContent = async () => {
+      if (!profile) {
+        console.log('Profile not loaded yet, waiting...');
+        return;
+      }
+      
       try {
         await generateAPStudyContent();
       } catch (error) {
@@ -85,7 +90,6 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
     };
     
     generateContent();
-  }, [task]);
 
   const generateAPStudyContent = async () => {
     setLoading(true);
