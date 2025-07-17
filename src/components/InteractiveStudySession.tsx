@@ -90,6 +90,7 @@ const InteractiveStudySession: React.FC<StudySessionProps> = ({ task, onClose, o
     };
     
     generateContent();
+  }, [profile, task]);
 
   const generateAPStudyContent = async () => {
     setLoading(true);
