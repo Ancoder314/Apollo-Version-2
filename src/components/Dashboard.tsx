@@ -854,10 +854,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setShowTimer }) => {
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-white flex items-center space-x-2">
                 <Sparkles className="w-5 h-5 text-purple-400" />
-                <span>AI-Recommended AP Study Sessions</span>
+                <span>Khan Academy Style Lessons</span>
               </h3>
               <span className="text-sm text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full">
-                Personalized for AP success
+                From your materials
               </span>
             </div>
           </div>

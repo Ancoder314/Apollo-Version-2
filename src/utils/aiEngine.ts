@@ -221,42 +221,37 @@ class AIEngine {
     }
 
     // Generate subjects with topics
-    const units = apSubjects.map((subject, index) => ({
+    const subjects = apSubjects.map(subject => ({
       name: subject.name,
       priority: this.determinePriority(subject.name, userProfile.weakAreas, userProfile.strongAreas),
-      estimatedHours: Math.round((userProfile.timeAvailable * estimatedDuration) / (apSubjects.length * 60)),
-      description: this.generateUnitDescription(subject.name, userProfile, materialAnalysis),
-      lessons: this.generateLessonsForUnit(subject.name, userProfile, materialAnalysis),
-      unitTest: {
-        questions: 15 + (index * 5),
-        timeLimit: 60,
-        passingScore: 70
-      }
+      timeAllocation: Math.round(100 / apSubjects.length),
+      topics: this.generateTopicsForSubject(subject.name, userProfile.learningStyle, materialAnalysis),
+      reasoning: this.generateReasoning(subject.name, userProfile, materialAnalysis)
     }));
 
     // Generate milestones
-    const milestones = this.generateMilestones(units, userProfile.timeAvailable, materialAnalysis);
+    const milestones = this.generateMilestones(subjects, userProfile.timeAvailable, materialAnalysis);
 
     // Calculate duration based on subjects and time available
-    const totalLessons = units.reduce((sum, unit) => sum + unit.lessons.length, 0);
+    const totalTopics = subjects.reduce((sum, subject) => sum + subject.topics.length, 0);
     const estimatedDuration = materialAnalysis?.suggestedDuration || Math.max(30, Math.min(120, totalTopics * 3));
 
     return {
       title: `Personalized AP Study Plan for ${userProfile.name}`,
-      description: `A comprehensive ${estimatedDuration}-day AP study plan covering ${units.length} AP units with ${totalLessons} lessons, tailored to your ${userProfile.learningStyle} learning style and ${userProfile.timeAvailable}-minute daily sessions.${materialAnalysis ? ' Includes questions and content extracted from your uploaded materials.' : ''}`,
+      description: `A comprehensive ${estimatedDuration}-day AP study plan covering ${subjects.length} AP subjects, tailored to your ${userProfile.learningStyle} learning style and ${userProfile.timeAvailable}-minute daily sessions.${materialAnalysis ? ' Customized based on your uploaded materials and course requirements.' : ''}`,
       duration: estimatedDuration,
       dailyTimeCommitment: userProfile.timeAvailable,
       difficulty: this.mapDifficulty(userProfile.preferredDifficulty),
-      units,
+      subjects,
       milestones,
       adaptiveFeatures: {
         difficultyAdjustment: true,
         personalizedContent: true,
         progressTracking: true
       },
-      personalizedRecommendations: this.generateRecommendations(userProfile, units, materialAnalysis),
-      estimatedOutcome: this.generateEstimatedOutcome(units, userProfile, materialAnalysis),
-      confidence: this.calculateConfidence(userProfile, units)
+      personalizedRecommendations: this.generateRecommendations(userProfile, subjects, materialAnalysis),
+      estimatedOutcome: this.generateEstimatedOutcome(subjects, userProfile, materialAnalysis),
+      confidence: this.calculateConfidence(userProfile, subjects)
     };
   }
 
@@ -748,7 +743,7 @@ class AIEngine {
     return outcome;
   }
 
-  private calculateConfidence(userProfile: UserProfile, subjects: any[]): number {
+  private calculateConfidence(userProfile: UserProfile, units: any[]): number {
     let confidence = 70; // Base confidence
     
     // Adjust based on user level
@@ -762,8 +757,8 @@ class AIEngine {
     if (userProfile.totalStars > 100) confidence += 5;
     if (userProfile.currentStreak > 7) confidence += 5;
     
-    // Adjust based on number of subjects (more subjects = lower confidence per subject)
-    confidence -= Math.max(0, (subjects.length - 2) * 5);
+    // Adjust based on number of units (more units = lower confidence per unit)
+    confidence -= Math.max(0, (units.length - 2) * 5);
     
     return Math.min(95, Math.max(60, confidence));
   }
