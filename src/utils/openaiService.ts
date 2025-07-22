@@ -1,9 +1,20 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true
-});
+let openai: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openai) {
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    if (!apiKey || apiKey === 'your_openai_api_key_here') {
+      throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your .env file.');
+    }
+    openai = new OpenAI({
+      apiKey,
+      dangerouslyAllowBrowser: true
+    });
+  }
+  return openai;
+}
 
 export interface OpenAIStudyPlanRequest {
   userProfile: {
@@ -51,9 +62,10 @@ export interface OpenAIStudyPlanResponse {
 export class OpenAIService {
   async generateStudyPlan(request: OpenAIStudyPlanRequest): Promise<OpenAIStudyPlanResponse> {
     try {
+      const client = getOpenAIClient();
       const prompt = this.createAPStudyPlanPrompt(request);
       
-      const completion = await openai.chat.completions.create({
+      const completion = await client.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
           {
@@ -104,7 +116,7 @@ Create engaging AP-focused content including:
 
 Format as JSON with structured content for an interactive AP learning session.`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await client.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
           {
