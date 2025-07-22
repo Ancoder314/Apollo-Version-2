@@ -7,20 +7,42 @@ export interface StudyPlan {
   duration: number;
   dailyTimeCommitment: number;
   difficulty: string;
-  subjects: Array<{
+  units: Array<{
     name: string;
     priority: 'high' | 'medium' | 'low';
-    timeAllocation: number;
-    topics: Array<{
+    estimatedHours: number;
+    description: string;
+    lessons: Array<{
       name: string;
       difficulty: string;
       estimatedTime: number;
-      prerequisites: string[];
       learningObjectives: string[];
-      resources: string[];
-      assessments: string[];
+      contentTypes: string[];
+      materialQuestions: Array<{
+        question: string;
+        type: 'multiple_choice' | 'short_answer' | 'essay';
+        options?: string[];
+        correctAnswer?: number | string;
+        explanation: string;
+        pageReference?: string;
+        difficulty: string;
+      }>;
+      activities: Array<{
+        type: string;
+        title: string;
+        description: string;
+        estimatedTime: number;
+      }>;
+      mastery: {
+        requiredScore: number;
+        practiceProblems: number;
+      };
     }>;
-    reasoning: string;
+    unitTest: {
+      questions: number;
+      timeLimit: number;
+      passingScore: number;
+    };
   }>;
   milestones: Array<{
     week: number;
@@ -51,6 +73,18 @@ export interface UserProfile {
   preferredDifficulty: 'easy' | 'medium' | 'hard' | 'adaptive';
   studyGoals: string[];
   timeAvailable: number;
+  courseDetailing?: {
+    questions: boolean;
+    videos: boolean;
+    lectures: boolean;
+    interactiveExercises: boolean;
+    practiceTests: boolean;
+    studyGuides: boolean;
+    flashcards: boolean;
+    labActivities: boolean;
+    groupDiscussions: boolean;
+    realWorldApplications: boolean;
+  };
   recentPerformance?: {
     accuracy: number;
     speed: number;
@@ -187,37 +221,42 @@ class AIEngine {
     }
 
     // Generate subjects with topics
-    const subjects = apSubjects.map(subject => ({
+    const units = apSubjects.map((subject, index) => ({
       name: subject.name,
       priority: this.determinePriority(subject.name, userProfile.weakAreas, userProfile.strongAreas),
-      timeAllocation: Math.round(100 / apSubjects.length),
-      topics: this.generateTopicsForSubject(subject.name, userProfile.learningStyle, materialAnalysis),
-      reasoning: this.generateReasoning(subject.name, userProfile, materialAnalysis)
+      estimatedHours: Math.round((userProfile.timeAvailable * estimatedDuration) / (apSubjects.length * 60)),
+      description: this.generateUnitDescription(subject.name, userProfile, materialAnalysis),
+      lessons: this.generateLessonsForUnit(subject.name, userProfile, materialAnalysis),
+      unitTest: {
+        questions: 15 + (index * 5),
+        timeLimit: 60,
+        passingScore: 70
+      }
     }));
 
     // Generate milestones
-    const milestones = this.generateMilestones(subjects, userProfile.timeAvailable, materialAnalysis);
+    const milestones = this.generateMilestones(units, userProfile.timeAvailable, materialAnalysis);
 
     // Calculate duration based on subjects and time available
-    const totalTopics = subjects.reduce((sum, subject) => sum + subject.topics.length, 0);
+    const totalLessons = units.reduce((sum, unit) => sum + unit.lessons.length, 0);
     const estimatedDuration = materialAnalysis?.suggestedDuration || Math.max(30, Math.min(120, totalTopics * 3));
 
     return {
       title: `Personalized AP Study Plan for ${userProfile.name}`,
-      description: `A comprehensive ${estimatedDuration}-day AP study plan covering ${subjects.length} AP subjects, tailored to your ${userProfile.learningStyle} learning style and ${userProfile.timeAvailable}-minute daily sessions.${materialAnalysis ? ' Customized based on your uploaded materials and course requirements.' : ''}`,
+      description: `A comprehensive ${estimatedDuration}-day AP study plan covering ${units.length} AP units with ${totalLessons} lessons, tailored to your ${userProfile.learningStyle} learning style and ${userProfile.timeAvailable}-minute daily sessions.${materialAnalysis ? ' Includes questions and content extracted from your uploaded materials.' : ''}`,
       duration: estimatedDuration,
       dailyTimeCommitment: userProfile.timeAvailable,
       difficulty: this.mapDifficulty(userProfile.preferredDifficulty),
-      subjects,
+      units,
       milestones,
       adaptiveFeatures: {
         difficultyAdjustment: true,
         personalizedContent: true,
         progressTracking: true
       },
-      personalizedRecommendations: this.generateRecommendations(userProfile, subjects, materialAnalysis),
-      estimatedOutcome: this.generateEstimatedOutcome(subjects, userProfile, materialAnalysis),
-      confidence: this.calculateConfidence(userProfile, subjects)
+      personalizedRecommendations: this.generateRecommendations(userProfile, units, materialAnalysis),
+      estimatedOutcome: this.generateEstimatedOutcome(units, userProfile, materialAnalysis),
+      confidence: this.calculateConfidence(userProfile, units)
     };
   }
 
@@ -231,6 +270,18 @@ class AIEngine {
     coursework: string[];
     weaknessIndicators: string[];
     strengthIndicators: string[];
+    extractedQuestions: Array<{
+      question: string;
+      context: string;
+      type: 'multiple_choice' | 'short_answer' | 'essay';
+      difficulty: string;
+      pageReference?: string;
+    }>;
+    chapterStructure: Array<{
+      chapter: string;
+      topics: string[];
+      pageRange?: string;
+    }>;
   } | null {
     if (!additionalInfo || additionalInfo.trim().length < 10) {
       return null;
@@ -343,6 +394,11 @@ class AIEngine {
     const weaknessIndicators = weaknessKeywords.filter(keyword => text.includes(keyword));
     const strengthIndicators = strengthKeywords.filter(keyword => text.includes(keyword));
 
+    // Extract questions from materials
+    const extractedQuestions = this.extractQuestionsFromText(text);
+    
+    // Extract chapter/unit structure
+    const chapterStructure = this.extractChapterStructure(text);
     const analysis = {
       detectedSubjects: detectedSubjects.slice(0, 4), // Limit to 4 subjects
       keyTopics: keyTopics.slice(0, 10), // Limit to 10 topics
@@ -352,7 +408,9 @@ class AIEngine {
       examDates: [...new Set(examDates)].slice(0, 3),
       coursework: [...new Set(coursework)],
       weaknessIndicators,
-      strengthIndicators
+      strengthIndicators,
+      extractedQuestions,
+      chapterStructure
     };
 
     console.log('📊 Material analysis results:', analysis);

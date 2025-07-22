@@ -37,6 +37,18 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
     learningStyle: 'visual',
     timeAvailable: 60,
     preferredDifficulty: 'adaptive',
+    courseDetailing: {
+      questions: true,
+      videos: true,
+      lectures: false,
+      interactiveExercises: true,
+      practiceTests: true,
+      studyGuides: true,
+      flashcards: false,
+      labActivities: false,
+      groupDiscussions: false,
+      realWorldApplications: true
+    },
     additionalInfo: '',
     uploadedFiles: [] as File[]
   });
@@ -146,6 +158,7 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
         preferredDifficulty: formData.preferredDifficulty as any,
         studyGoals: validGoals,
         timeAvailable: formData.timeAvailable,
+        courseDetailing: formData.courseDetailing,
         recentPerformance: {
           accuracy: 75,
           speed: 1.2,
@@ -523,6 +536,47 @@ const StudyPlanGenerator: React.FC<StudyPlanGeneratorProps> = ({ onClose, onPlan
           </p>
         </div>
       </div>
+        {/* Course Detailing Preferences */}
+        <div className="mt-8">
+          <h4 className="text-lg font-semibold text-white mb-4">Course Content Preferences</h4>
+          <p className="text-gray-400 text-sm mb-4">
+            Select the types of learning materials you want included in your AP study plan
+          </p>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {Object.entries({
+              questions: 'Practice Questions',
+              videos: 'Video Lessons',
+              lectures: 'Audio Lectures',
+              interactiveExercises: 'Interactive Exercises',
+              practiceTests: 'Practice Tests',
+              studyGuides: 'Study Guides',
+              flashcards: 'Flashcards',
+              labActivities: 'Lab Activities',
+              groupDiscussions: 'Group Discussions',
+              realWorldApplications: 'Real-World Applications'
+            }).map(([key, label]) => (
+              <div key={key} className="flex items-center space-x-3 p-3 bg-slate-700/30 rounded-lg border border-slate-600/50">
+                <input
+                  type="checkbox"
+                  id={key}
+                  checked={formData.courseDetailing[key as keyof typeof formData.courseDetailing]}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    courseDetailing: {
+                      ...prev.courseDetailing,
+                      [key]: e.target.checked
+                    }
+                  }))}
+                  className="w-4 h-4 text-purple-600 bg-slate-600 border-slate-500 rounded focus:ring-purple-500 focus:ring-2"
+                />
+                <label htmlFor={key} className="text-white text-sm font-medium cursor-pointer">
+                  {label}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
     </div>
   );
 
