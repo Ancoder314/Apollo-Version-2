@@ -8,7 +8,8 @@ import {
   Target,
   TrendingUp,
   Award,
-  LogOut
+  LogOut,
+  AlertCircle
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import Progress from './components/Progress';

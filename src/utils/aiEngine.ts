@@ -1,26 +1,5 @@
 import { openaiService } from './openaiService';
 
-export interface UserProfile {
-  name: string;
-  level: number;
-  totalStars: number;
-  currentStreak: number;
-  studyTime: number;
-  completedLessons: number;
-  weakAreas: string[];
-  strongAreas: string[];
-  learningStyle: 'visual' | 'auditory' | 'kinesthetic' | 'reading';
-  preferredDifficulty: 'easy' | 'medium' | 'hard' | 'adaptive';
-  studyGoals: string[];
-  timeAvailable: number;
-  recentPerformance?: {
-    accuracy: number;
-    speed: number;
-    consistency: number;
-    engagement: number;
-  };
-}
-
 export interface StudyPlan {
   id?: string;
   title: string;
@@ -53,65 +32,88 @@ export interface StudyPlan {
     difficultyAdjustment: boolean;
     personalizedContent: boolean;
     progressTracking: boolean;
-    weaknessIdentification: boolean;
   };
   personalizedRecommendations: string[];
   estimatedOutcome: string;
   confidence: number;
 }
 
+export interface UserProfile {
+  name: string;
+  level: number;
+  totalStars: number;
+  currentStreak: number;
+  studyTime: number;
+  completedLessons: number;
+  weakAreas: string[];
+  strongAreas: string[];
+  learningStyle: 'visual' | 'auditory' | 'kinesthetic' | 'reading';
+  preferredDifficulty: 'easy' | 'medium' | 'hard' | 'adaptive';
+  studyGoals: string[];
+  timeAvailable: number;
+  recentPerformance?: {
+    accuracy: number;
+    speed: number;
+    consistency: number;
+    engagement: number;
+  };
+}
+
+export interface StudyContent {
+  type: string;
+  title: string;
+  question: string;
+  options?: string[];
+  correct?: number;
+  answer?: string;
+  explanation: string;
+  hint: string;
+  points: number;
+  difficulty: string;
+  concepts: string[];
+  apSkills?: string[];
+  visualAid?: string;
+  audioExplanation?: string;
+  interactiveElement?: string;
+  commonMistakes?: string[];
+  steps?: Array<{
+    step: number;
+    instruction: string;
+    answer: string;
+  }>;
+}
+
 export interface QuestionSet {
   title: string;
-  description: string;
-  difficulty: string;
   questions: Array<{
-    type: 'multiple_choice' | 'short_answer' | 'essay' | 'problem_solving';
+    type: string;
     question: string;
-    options?: string[];
-    correctAnswer: number | string;
+    options: string[];
+    correctAnswer: number;
     explanation: string;
     hint: string;
     points: number;
     concepts: string[];
     apSkills: string[];
-    commonMistakes?: string[];
   }>;
 }
 
-export interface StudyContent {
-  question: string;
-  options: string[];
-  correct: number;
-  explanation: string;
-  hint: string;
-  points: number;
-  concepts: string[];
-  apSkills: string[];
-  visualAid?: string;
-  audioExplanation?: string;
-  interactiveElement?: string;
-  commonMistakes?: string[];
-}
-
 class AIEngine {
-  private hasOpenAI: boolean;
-
-  constructor() {
-    this.hasOpenAI = !!(import.meta.env.VITE_OPENAI_API_KEY && 
-                       import.meta.env.VITE_OPENAI_API_KEY !== 'your_openai_api_key_here');
-  }
+  private hasOpenAI = import.meta.env.VITE_OPENAI_API_KEY && 
+                     import.meta.env.VITE_OPENAI_API_KEY !== 'your_openai_api_key_here';
 
   async generateStudyPlan(
     userProfile: UserProfile, 
     goals: string[], 
     additionalInfo?: string
   ): Promise<StudyPlan> {
-    console.log('🤖 AI Engine: Generating personalized AP study plan...');
+    console.log('🤖 AI Engine: Generating study plan...');
     
+    // Use OpenAI if available, otherwise use local AI
     if (this.hasOpenAI) {
       try {
-        console.log('🔥 Using OpenAI for enhanced study plan generation');
-        const openAIRequest = {
+        console.log('🚀 Using OpenAI for enhanced study plan generation');
+        const openaiResponse = await openaiService.generateStudyPlan({
           userProfile: {
             name: userProfile.name,
             level: userProfile.level,
@@ -120,33 +122,50 @@ class AIEngine {
             learningStyle: userProfile.learningStyle,
             studyGoals: userProfile.studyGoals,
             timeAvailable: userProfile.timeAvailable,
-            additionalInfo: additionalInfo || ''
+            additionalInfo
           },
-          goals: goals,
+          goals,
           uploadedContent: additionalInfo
-        };
+        });
 
-        const result = await openaiService.generateStudyPlan(openAIRequest);
-        console.log('✅ OpenAI study plan generated successfully');
-        
-        // Enhance with adaptive features
-        return {
-          ...result,
-          adaptiveFeatures: {
-            difficultyAdjustment: true,
-            personalizedContent: true,
-            progressTracking: true,
-            weaknessIdentification: true
-          }
-        };
+        // Convert OpenAI response to our format
+        return this.convertOpenAIResponse(openaiResponse);
       } catch (error) {
-        console.warn('⚠️ OpenAI failed, falling back to local AI:', error);
+        console.warn('OpenAI failed, falling back to local AI:', error);
         return this.generateLocalStudyPlan(userProfile, goals, additionalInfo);
       }
     } else {
-      console.log('🧠 Using advanced local AI engine');
+      console.log('🧠 Using local AI engine for study plan generation');
       return this.generateLocalStudyPlan(userProfile, goals, additionalInfo);
     }
+  }
+
+  private convertOpenAIResponse(response: any): StudyPlan {
+    return {
+      title: response.title,
+      description: response.description,
+      duration: response.duration,
+      dailyTimeCommitment: Math.round(response.duration * 0.5), // Estimate based on duration
+      difficulty: response.difficulty,
+      subjects: response.subjects.map((subject: any) => ({
+        ...subject,
+        topics: subject.topics.map((topic: any) => ({
+          ...topic,
+          prerequisites: topic.prerequisites || [],
+          resources: topic.resources || [],
+          assessments: topic.assessments || []
+        }))
+      })),
+      milestones: response.milestones,
+      adaptiveFeatures: {
+        difficultyAdjustment: true,
+        personalizedContent: true,
+        progressTracking: true
+      },
+      personalizedRecommendations: response.personalizedRecommendations,
+      estimatedOutcome: response.estimatedOutcome,
+      confidence: response.confidence
+    };
   }
 
   private async generateLocalStudyPlan(
@@ -154,663 +173,319 @@ class AIEngine {
     goals: string[], 
     additionalInfo?: string
   ): Promise<StudyPlan> {
-    console.log('🎯 Generating personalized local study plan...');
+    console.log('🧠 Generating local AI study plan...');
     
-    // Analyze user goals to identify AP subjects
-    const apSubjects = this.extractAPSubjects(goals, userProfile.weakAreas, userProfile.strongAreas);
-    console.log('📚 Identified AP subjects:', apSubjects);
+    // Analyze goals to identify AP subjects
+    const apSubjects = this.identifyAPSubjects(goals);
     
-    // Analyze uploaded content for personalization
-    const contentInsights = this.analyzeUploadedContent(additionalInfo || '');
-    console.log('📄 Content insights:', contentInsights);
-    
-    // Generate personalized subjects based on user profile
-    const subjects = apSubjects.map(subject => {
-      const isWeakArea = userProfile.weakAreas.some(weak => 
-        subject.toLowerCase().includes(weak.toLowerCase()) || 
-        weak.toLowerCase().includes(subject.toLowerCase())
-      );
-      const isStrongArea = userProfile.strongAreas.some(strong => 
-        subject.toLowerCase().includes(strong.toLowerCase()) || 
-        strong.toLowerCase().includes(subject.toLowerCase())
-      );
-      
-      const priority = isWeakArea ? 'high' : isStrongArea ? 'low' : 'medium';
-      const timeAllocation = isWeakArea ? 35 : isStrongArea ? 20 : 25;
-      
-      // Generate personalized topics based on content analysis
-      const topics = this.generatePersonalizedTopics(subject, userProfile, contentInsights);
-      
-      return {
-        name: subject,
-        priority: priority as 'high' | 'medium' | 'low',
-        timeAllocation,
-        topics,
-        reasoning: this.generateSubjectReasoning(subject, userProfile, isWeakArea, isStrongArea, contentInsights)
-      };
-    });
+    if (apSubjects.length === 0) {
+      throw new Error('No AP subjects identified from your goals. Please be more specific about which AP courses you want to study.');
+    }
 
-    // Generate personalized milestones
-    const milestones = this.generatePersonalizedMilestones(subjects, userProfile);
-    
-    // Generate personalized recommendations
-    const personalizedRecommendations = this.generatePersonalizedRecommendations(userProfile, contentInsights);
-    
-    const studyPlan: StudyPlan = {
+    // Generate subjects with topics
+    const subjects = apSubjects.map(subject => ({
+      name: subject.name,
+      priority: this.determinePriority(subject.name, userProfile.weakAreas, userProfile.strongAreas),
+      timeAllocation: Math.round(100 / apSubjects.length),
+      topics: this.generateTopicsForSubject(subject.name, userProfile.learningStyle),
+      reasoning: this.generateReasoning(subject.name, userProfile)
+    }));
+
+    // Generate milestones
+    const milestones = this.generateMilestones(subjects, userProfile.timeAvailable);
+
+    // Calculate duration based on subjects and time available
+    const totalTopics = subjects.reduce((sum, subject) => sum + subject.topics.length, 0);
+    const estimatedDuration = Math.max(30, Math.min(120, totalTopics * 3));
+
+    return {
       title: `Personalized AP Study Plan for ${userProfile.name}`,
-      description: `AI-crafted study plan targeting your specific goals: ${goals.join(', ')}. Optimized for ${userProfile.learningStyle} learning style with focus on weak areas.`,
-      duration: this.calculateOptimalDuration(userProfile, subjects.length),
+      description: `A comprehensive ${estimatedDuration}-day AP study plan covering ${subjects.length} AP subjects, tailored to your ${userProfile.learningStyle} learning style and ${userProfile.timeAvailable}-minute daily sessions.`,
+      duration: estimatedDuration,
       dailyTimeCommitment: userProfile.timeAvailable,
-      difficulty: this.determineDifficulty(userProfile),
+      difficulty: this.mapDifficulty(userProfile.preferredDifficulty),
       subjects,
       milestones,
       adaptiveFeatures: {
         difficultyAdjustment: true,
         personalizedContent: true,
-        progressTracking: true,
-        weaknessIdentification: true
+        progressTracking: true
       },
-      personalizedRecommendations,
-      estimatedOutcome: this.generatePersonalizedOutcome(userProfile, subjects),
+      personalizedRecommendations: this.generateRecommendations(userProfile, subjects),
+      estimatedOutcome: this.generateEstimatedOutcome(subjects, userProfile),
       confidence: this.calculateConfidence(userProfile, subjects)
     };
-
-    console.log('✅ Personalized local study plan generated');
-    return studyPlan;
   }
 
-  private extractAPSubjects(goals: string[], weakAreas: string[], strongAreas: string[]): string[] {
+  private identifyAPSubjects(goals: string[]): Array<{ name: string; keywords: string[] }> {
     const apSubjectMap = {
-      'calculus': 'AP Calculus AB',
-      'calc': 'AP Calculus AB',
-      'physics': 'AP Physics 1',
-      'chemistry': 'AP Chemistry',
-      'chem': 'AP Chemistry',
-      'biology': 'AP Biology',
-      'bio': 'AP Biology',
-      'computer science': 'AP Computer Science A',
-      'cs': 'AP Computer Science A',
-      'programming': 'AP Computer Science A',
-      'statistics': 'AP Statistics',
-      'stats': 'AP Statistics',
-      'english': 'AP English Language',
-      'literature': 'AP English Literature',
-      'history': 'AP US History',
-      'psychology': 'AP Psychology',
-      'economics': 'AP Economics',
-      'government': 'AP Government',
-      'environmental': 'AP Environmental Science',
-      'art': 'AP Art History',
-      'music': 'AP Music Theory',
-      'spanish': 'AP Spanish Language',
-      'french': 'AP French Language',
-      'latin': 'AP Latin',
-      'geography': 'AP Human Geography'
+      'AP Calculus AB': ['calculus ab', 'calc ab', 'derivatives', 'integrals', 'limits'],
+      'AP Calculus BC': ['calculus bc', 'calc bc', 'series', 'parametric', 'polar'],
+      'AP Physics 1': ['physics 1', 'mechanics', 'kinematics', 'dynamics', 'energy'],
+      'AP Physics 2': ['physics 2', 'electricity', 'magnetism', 'waves', 'optics'],
+      'AP Chemistry': ['chemistry', 'chem', 'stoichiometry', 'equilibrium', 'kinetics'],
+      'AP Biology': ['biology', 'bio', 'genetics', 'evolution', 'ecology'],
+      'AP Computer Science A': ['computer science', 'cs', 'java', 'programming', 'algorithms'],
+      'AP Statistics': ['statistics', 'stats', 'probability', 'hypothesis', 'regression'],
+      'AP English Language': ['english language', 'rhetoric', 'argument', 'synthesis'],
+      'AP English Literature': ['english literature', 'poetry', 'prose', 'literary analysis'],
+      'AP US History': ['us history', 'american history', 'apush', 'historical analysis'],
+      'AP World History': ['world history', 'global history', 'comparative history'],
+      'AP European History': ['european history', 'euro history', 'ap euro'],
+      'AP Psychology': ['psychology', 'psych', 'behavior', 'cognition'],
+      'AP Economics': ['economics', 'econ', 'micro', 'macro', 'market'],
+      'AP Government': ['government', 'gov', 'politics', 'constitution', 'civics']
     };
 
-    const allText = [...goals, ...weakAreas, ...strongAreas].join(' ').toLowerCase();
-    const identifiedSubjects = new Set<string>();
+    const identifiedSubjects: Array<{ name: string; keywords: string[] }> = [];
+    const goalText = goals.join(' ').toLowerCase();
 
-    // Extract subjects from text
-    Object.entries(apSubjectMap).forEach(([keyword, subject]) => {
-      if (allText.includes(keyword)) {
-        identifiedSubjects.add(subject);
+    for (const [subject, keywords] of Object.entries(apSubjectMap)) {
+      if (keywords.some(keyword => goalText.includes(keyword))) {
+        identifiedSubjects.push({ name: subject, keywords });
       }
-    });
-
-    // If no subjects identified, provide default based on common AP courses
-    if (identifiedSubjects.size === 0) {
-      return ['AP Calculus AB', 'AP Physics 1', 'AP English Language'];
     }
 
-    return Array.from(identifiedSubjects).slice(0, 4); // Limit to 4 subjects
-  }
-
-  private analyzeUploadedContent(content: string): any {
-    if (!content || content.trim().length === 0) {
-      return { topics: [], concepts: [], difficulty: 'medium', focus_areas: [] };
+    // If no specific subjects found, suggest based on common AP courses
+    if (identifiedSubjects.length === 0) {
+      identifiedSubjects.push(
+        { name: 'AP Calculus AB', keywords: ['calculus'] },
+        { name: 'AP English Language', keywords: ['english'] },
+        { name: 'AP US History', keywords: ['history'] }
+      );
     }
 
-    console.log('📄 Analyzing uploaded content for personalization...');
-    
-    // Extract key topics and concepts from uploaded content
-    const topics = this.extractTopicsFromContent(content);
-    const concepts = this.extractConceptsFromContent(content);
-    const difficulty = this.assessContentDifficulty(content);
-    const focusAreas = this.identifyFocusAreas(content);
-    
-    return {
-      topics,
-      concepts,
-      difficulty,
-      focus_areas: focusAreas,
-      content_length: content.length,
-      has_formulas: /\b(formula|equation|theorem)\b/i.test(content),
-      has_examples: /\b(example|problem|solution)\b/i.test(content),
-      has_definitions: /\b(define|definition|means)\b/i.test(content)
-    };
+    return identifiedSubjects.slice(0, 4); // Limit to 4 subjects max
   }
 
-  private extractTopicsFromContent(content: string): string[] {
-    const topicPatterns = [
-      /chapter\s+\d+[:\s]+([^.\n]+)/gi,
-      /section\s+\d+[:\s]+([^.\n]+)/gi,
-      /topic[:\s]+([^.\n]+)/gi,
-      /unit\s+\d+[:\s]+([^.\n]+)/gi,
-      /lesson[:\s]+([^.\n]+)/gi
-    ];
-
-    const topics = new Set<string>();
+  private determinePriority(
+    subjectName: string, 
+    weakAreas: string[], 
+    strongAreas: string[]
+  ): 'high' | 'medium' | 'low' {
+    const subjectLower = subjectName.toLowerCase();
     
-    topicPatterns.forEach(pattern => {
-      const matches = content.match(pattern);
-      if (matches) {
-        matches.forEach(match => {
-          const topic = match.replace(/^(chapter|section|topic|unit|lesson)\s*\d*[:\s]*/i, '').trim();
-          if (topic.length > 3 && topic.length < 100) {
-            topics.add(topic);
-          }
-        });
-      }
-    });
-
-    return Array.from(topics).slice(0, 10);
-  }
-
-  private extractConceptsFromContent(content: string): string[] {
-    const conceptKeywords = [
-      'derivative', 'integral', 'limit', 'function', 'equation', 'theorem',
-      'velocity', 'acceleration', 'force', 'energy', 'momentum',
-      'atom', 'molecule', 'reaction', 'equilibrium', 'bond',
-      'cell', 'DNA', 'protein', 'evolution', 'ecosystem',
-      'algorithm', 'data structure', 'object', 'class', 'method',
-      'probability', 'statistics', 'hypothesis', 'correlation',
-      'rhetoric', 'argument', 'analysis', 'synthesis', 'evidence'
-    ];
-
-    const concepts = new Set<string>();
-    const contentLower = content.toLowerCase();
-    
-    conceptKeywords.forEach(keyword => {
-      if (contentLower.includes(keyword)) {
-        concepts.add(keyword);
-      }
-    });
-
-    return Array.from(concepts);
-  }
-
-  private assessContentDifficulty(content: string): string {
-    const advancedTerms = ['advanced', 'complex', 'sophisticated', 'intricate', 'comprehensive'];
-    const basicTerms = ['basic', 'fundamental', 'introduction', 'simple', 'elementary'];
-    
-    const contentLower = content.toLowerCase();
-    const advancedCount = advancedTerms.filter(term => contentLower.includes(term)).length;
-    const basicCount = basicTerms.filter(term => contentLower.includes(term)).length;
-    
-    if (advancedCount > basicCount) return 'advanced';
-    if (basicCount > advancedCount) return 'beginner';
-    return 'intermediate';
-  }
-
-  private identifyFocusAreas(content: string): string[] {
-    const focusPatterns = [
-      /focus\s+on[:\s]+([^.\n]+)/gi,
-      /emphasis\s+on[:\s]+([^.\n]+)/gi,
-      /important[:\s]+([^.\n]+)/gi,
-      /key\s+concept[:\s]+([^.\n]+)/gi,
-      /main\s+idea[:\s]+([^.\n]+)/gi
-    ];
-
-    const focusAreas = new Set<string>();
-    
-    focusPatterns.forEach(pattern => {
-      const matches = content.match(pattern);
-      if (matches) {
-        matches.forEach(match => {
-          const area = match.replace(/^(focus|emphasis|important|key\s+concept|main\s+idea)\s*on\s*[:\s]*/i, '').trim();
-          if (area.length > 3 && area.length < 100) {
-            focusAreas.add(area);
-          }
-        });
-      }
-    });
-
-    return Array.from(focusAreas).slice(0, 5);
-  }
-
-  private generatePersonalizedTopics(subject: string, userProfile: UserProfile, contentInsights: any): any[] {
-    const baseTopics = this.getBaseTopicsForSubject(subject);
-    
-    // Personalize topics based on user profile and content
-    const personalizedTopics = baseTopics.map(topic => {
-      const difficulty = this.adjustTopicDifficulty(topic, userProfile, contentInsights);
-      const estimatedTime = this.calculatePersonalizedTime(topic, userProfile);
-      const learningObjectives = this.generatePersonalizedObjectives(topic, userProfile, contentInsights);
-      
-      return {
-        name: topic.name,
-        difficulty,
-        estimatedTime,
-        prerequisites: topic.prerequisites || [],
-        learningObjectives,
-        resources: this.generatePersonalizedResources(topic, userProfile),
-        assessments: this.generatePersonalizedAssessments(topic, userProfile)
-      };
-    });
-
-    // Add topics from uploaded content if available
-    if (contentInsights.topics.length > 0) {
-      contentInsights.topics.forEach((contentTopic: string) => {
-        if (!personalizedTopics.some(t => t.name.toLowerCase().includes(contentTopic.toLowerCase()))) {
-          personalizedTopics.push({
-            name: `${contentTopic} (From Your Materials)`,
-            difficulty: contentInsights.difficulty,
-            estimatedTime: 45,
-            prerequisites: [],
-            learningObjectives: [`Master ${contentTopic} concepts from your uploaded materials`],
-            resources: ['Your uploaded materials', 'Supplementary practice problems'],
-            assessments: ['Custom questions based on your materials']
-          });
-        }
-      });
+    if (weakAreas.some(area => subjectLower.includes(area.toLowerCase()))) {
+      return 'high';
     }
-
-    return personalizedTopics.slice(0, 8); // Limit to 8 topics per subject
+    if (strongAreas.some(area => subjectLower.includes(area.toLowerCase()))) {
+      return 'low';
+    }
+    return 'medium';
   }
 
-  private getBaseTopicsForSubject(subject: string): any[] {
-    const topicMap: { [key: string]: any[] } = {
+  private generateTopicsForSubject(subjectName: string, learningStyle: string): Array<{
+    name: string;
+    difficulty: string;
+    estimatedTime: number;
+    prerequisites: string[];
+    learningObjectives: string[];
+    resources: string[];
+    assessments: string[];
+  }> {
+    const topicTemplates = {
       'AP Calculus AB': [
-        { name: 'Limits and Continuity', prerequisites: ['Algebra', 'Functions'] },
-        { name: 'Derivatives', prerequisites: ['Limits'] },
-        { name: 'Applications of Derivatives', prerequisites: ['Derivatives'] },
-        { name: 'Integrals', prerequisites: ['Derivatives'] },
-        { name: 'Applications of Integrals', prerequisites: ['Integrals'] }
+        { name: 'Limits and Continuity', difficulty: 'Intermediate', time: 45 },
+        { name: 'Derivatives and Applications', difficulty: 'Intermediate', time: 60 },
+        { name: 'Integrals and FTC', difficulty: 'Advanced', time: 60 },
+        { name: 'Applications of Integration', difficulty: 'Advanced', time: 45 }
       ],
       'AP Physics 1': [
-        { name: 'Kinematics', prerequisites: ['Algebra', 'Trigonometry'] },
-        { name: 'Dynamics', prerequisites: ['Kinematics'] },
-        { name: 'Energy and Momentum', prerequisites: ['Dynamics'] },
-        { name: 'Rotational Motion', prerequisites: ['Dynamics'] },
-        { name: 'Waves and Sound', prerequisites: ['Energy'] }
+        { name: 'Kinematics', difficulty: 'Beginner', time: 45 },
+        { name: 'Newton\'s Laws', difficulty: 'Intermediate', time: 60 },
+        { name: 'Energy and Momentum', difficulty: 'Intermediate', time: 60 },
+        { name: 'Rotational Motion', difficulty: 'Advanced', time: 45 }
       ],
       'AP Chemistry': [
-        { name: 'Atomic Structure', prerequisites: ['Basic Chemistry'] },
-        { name: 'Chemical Bonding', prerequisites: ['Atomic Structure'] },
-        { name: 'Stoichiometry', prerequisites: ['Chemical Bonding'] },
-        { name: 'Thermodynamics', prerequisites: ['Stoichiometry'] },
-        { name: 'Kinetics', prerequisites: ['Thermodynamics'] }
+        { name: 'Atomic Structure', difficulty: 'Beginner', time: 45 },
+        { name: 'Chemical Bonding', difficulty: 'Intermediate', time: 60 },
+        { name: 'Stoichiometry', difficulty: 'Intermediate', time: 60 },
+        { name: 'Equilibrium', difficulty: 'Advanced', time: 45 }
       ],
-      'AP Biology': [
-        { name: 'Cell Structure and Function', prerequisites: ['Basic Biology'] },
-        { name: 'Genetics', prerequisites: ['Cell Biology'] },
-        { name: 'Evolution', prerequisites: ['Genetics'] },
-        { name: 'Ecology', prerequisites: ['Evolution'] },
-        { name: 'Molecular Biology', prerequisites: ['Genetics'] }
-      ],
-      'AP Computer Science A': [
-        { name: 'Object-Oriented Programming', prerequisites: ['Basic Programming'] },
-        { name: 'Data Structures', prerequisites: ['OOP'] },
-        { name: 'Algorithms', prerequisites: ['Data Structures'] },
-        { name: 'Recursion', prerequisites: ['Algorithms'] },
-        { name: 'Sorting and Searching', prerequisites: ['Algorithms'] }
+      'default': [
+        { name: 'Fundamentals', difficulty: 'Beginner', time: 45 },
+        { name: 'Core Concepts', difficulty: 'Intermediate', time: 60 },
+        { name: 'Advanced Applications', difficulty: 'Advanced', time: 60 },
+        { name: 'Exam Preparation', difficulty: 'Expert', time: 45 }
       ]
     };
 
-    return topicMap[subject] || [
-      { name: `${subject} Fundamentals`, prerequisites: [] },
-      { name: `${subject} Applications`, prerequisites: ['Fundamentals'] },
-      { name: `${subject} Problem Solving`, prerequisites: ['Applications'] }
-    ];
+    const templates = topicTemplates[subjectName as keyof typeof topicTemplates] || topicTemplates.default;
+    
+    return templates.map(template => ({
+      name: template.name,
+      difficulty: template.difficulty,
+      estimatedTime: template.time,
+      prerequisites: template.difficulty === 'Beginner' ? [] : ['Previous topic completion'],
+      learningObjectives: [
+        `Master ${template.name} concepts`,
+        `Apply ${template.name} to AP exam problems`,
+        `Develop problem-solving strategies for ${template.name}`
+      ],
+      resources: this.generateResourcesForLearningStyle(learningStyle, template.name),
+      assessments: [
+        'Practice problems',
+        'Concept quiz',
+        'AP-style questions'
+      ]
+    }));
   }
 
-  private adjustTopicDifficulty(topic: any, userProfile: UserProfile, contentInsights: any): string {
-    let baseDifficulty = 'Intermediate';
+  private generateResourcesForLearningStyle(learningStyle: string, topicName: string): string[] {
+    const baseResources = [`${topicName} study guide`, `AP ${topicName} practice problems`];
     
-    // Adjust based on user's weak/strong areas
-    const isWeakArea = userProfile.weakAreas.some(weak => 
-      topic.name.toLowerCase().includes(weak.toLowerCase())
-    );
-    const isStrongArea = userProfile.strongAreas.some(strong => 
-      topic.name.toLowerCase().includes(strong.toLowerCase())
-    );
-    
-    if (isWeakArea) {
-      baseDifficulty = 'Beginner';
-    } else if (isStrongArea) {
-      baseDifficulty = 'Advanced';
-    }
-    
-    // Adjust based on content insights
-    if (contentInsights.difficulty === 'advanced' && baseDifficulty !== 'Beginner') {
-      baseDifficulty = 'Advanced';
-    } else if (contentInsights.difficulty === 'beginner') {
-      baseDifficulty = 'Beginner';
-    }
-    
-    return baseDifficulty;
-  }
-
-  private calculatePersonalizedTime(topic: any, userProfile: UserProfile): number {
-    let baseTime = 45; // Default 45 minutes
-    
-    // Adjust based on user's available time
-    if (userProfile.timeAvailable < 30) {
-      baseTime = 25;
-    } else if (userProfile.timeAvailable > 90) {
-      baseTime = 60;
-    }
-    
-    // Adjust based on learning style
-    if (userProfile.learningStyle === 'kinesthetic') {
-      baseTime += 15; // Hands-on learning takes more time
-    } else if (userProfile.learningStyle === 'reading') {
-      baseTime -= 10; // Reading-based learning can be faster
-    }
-    
-    return baseTime;
-  }
-
-  private generatePersonalizedObjectives(topic: any, userProfile: UserProfile, contentInsights: any): string[] {
-    const baseObjectives = [`Master ${topic.name} concepts and applications`];
-    
-    // Add learning style specific objectives
-    switch (userProfile.learningStyle) {
+    switch (learningStyle) {
       case 'visual':
-        baseObjectives.push(`Visualize ${topic.name} through diagrams and graphs`);
-        break;
+        return [...baseResources, `${topicName} diagrams`, `Interactive ${topicName} simulations`];
       case 'auditory':
-        baseObjectives.push(`Explain ${topic.name} concepts verbally`);
-        break;
+        return [...baseResources, `${topicName} lecture videos`, `${topicName} discussion podcasts`];
       case 'kinesthetic':
-        baseObjectives.push(`Apply ${topic.name} through hands-on practice`);
-        break;
+        return [...baseResources, `${topicName} lab activities`, `Hands-on ${topicName} experiments`];
       case 'reading':
-        baseObjectives.push(`Analyze ${topic.name} through detailed reading and writing`);
-        break;
+        return [...baseResources, `${topicName} textbook chapters`, `${topicName} research articles`];
+      default:
+        return baseResources;
     }
-    
-    // Add objectives based on content insights
-    if (contentInsights.focus_areas.length > 0) {
-      contentInsights.focus_areas.forEach((area: string) => {
-        if (topic.name.toLowerCase().includes(area.toLowerCase())) {
-          baseObjectives.push(`Focus on ${area} as identified in your materials`);
-        }
-      });
-    }
-    
-    return baseObjectives.slice(0, 4);
   }
 
-  private generatePersonalizedResources(topic: any, userProfile: UserProfile): string[] {
-    const resources = ['AP Course Materials', 'Practice Problems'];
+  private generateReasoning(subjectName: string, userProfile: UserProfile): string {
+    const reasons = [];
     
-    // Add learning style specific resources
-    switch (userProfile.learningStyle) {
-      case 'visual':
-        resources.push('Interactive Diagrams', 'Video Tutorials');
-        break;
-      case 'auditory':
-        resources.push('Audio Lectures', 'Discussion Forums');
-        break;
-      case 'kinesthetic':
-        resources.push('Lab Simulations', 'Hands-on Activities');
-        break;
-      case 'reading':
-        resources.push('Detailed Textbooks', 'Research Articles');
-        break;
+    if (userProfile.weakAreas.some(area => subjectName.toLowerCase().includes(area.toLowerCase()))) {
+      reasons.push('identified as a weak area requiring focused attention');
     }
     
-    return resources;
+    if (userProfile.studyGoals.some(goal => goal.toLowerCase().includes(subjectName.toLowerCase()))) {
+      reasons.push('directly aligns with your stated learning goals');
+    }
+    
+    reasons.push('essential for comprehensive AP exam preparation');
+    
+    return `This subject is included because it ${reasons.join(' and ')}.`;
   }
 
-  private generatePersonalizedAssessments(topic: any, userProfile: UserProfile): string[] {
-    const assessments = ['Multiple Choice Quiz', 'Problem Solving'];
-    
-    // Add learning style specific assessments
-    switch (userProfile.learningStyle) {
-      case 'visual':
-        assessments.push('Diagram Analysis', 'Graph Interpretation');
-        break;
-      case 'auditory':
-        assessments.push('Oral Explanation', 'Discussion Questions');
-        break;
-      case 'kinesthetic':
-        assessments.push('Practical Application', 'Lab Report');
-        break;
-      case 'reading':
-        assessments.push('Essay Questions', 'Research Project');
-        break;
-    }
-    
-    return assessments;
-  }
-
-  private generateSubjectReasoning(
-    subject: string, 
-    userProfile: UserProfile, 
-    isWeakArea: boolean, 
-    isStrongArea: boolean,
-    contentInsights: any
-  ): string {
-    let reasoning = `${subject} is included in your study plan`;
-    
-    if (isWeakArea) {
-      reasoning += ` as a high priority because it's identified as a weak area. Extra time and foundational support will be provided.`;
-    } else if (isStrongArea) {
-      reasoning += ` to maintain and advance your existing strength. Focus will be on challenging applications.`;
-    } else {
-      reasoning += ` to build comprehensive AP knowledge and skills.`;
-    }
-    
-    if (contentInsights.topics.length > 0) {
-      const relevantTopics = contentInsights.topics.filter((topic: string) => 
-        subject.toLowerCase().includes(topic.toLowerCase()) || 
-        topic.toLowerCase().includes(subject.toLowerCase())
-      );
-      
-      if (relevantTopics.length > 0) {
-        reasoning += ` Your uploaded materials contain relevant content on ${relevantTopics.join(', ')}, which will be integrated into the study plan.`;
-      }
-    }
-    
-    return reasoning;
-  }
-
-  private generatePersonalizedMilestones(subjects: any[], userProfile: UserProfile): any[] {
-    const totalWeeks = Math.ceil(this.calculateOptimalDuration(userProfile, subjects.length) / 7);
+  private generateMilestones(subjects: any[], timeAvailable: number): Array<{
+    week: number;
+    title: string;
+    description: string;
+    successCriteria: string[];
+  }> {
     const milestones = [];
+    const weeksPerSubject = Math.max(1, Math.floor(8 / subjects.length));
     
-    for (let week = 1; week <= Math.min(totalWeeks, 12); week += 2) {
-      const milestone = {
+    subjects.forEach((subject, index) => {
+      const week = (index * weeksPerSubject) + 1;
+      milestones.push({
         week,
-        title: `Week ${week} Milestone`,
-        description: '',
-        successCriteria: [] as string[]
-      };
-      
-      if (week <= 2) {
-        milestone.title = 'Foundation Building';
-        milestone.description = 'Establish strong fundamentals in your weak areas';
-        milestone.successCriteria = [
-          'Complete foundational topics in weak areas',
-          'Achieve 70% accuracy on basic problems',
-          'Establish consistent study routine'
-        ];
-      } else if (week <= 6) {
-        milestone.title = 'Skill Development';
-        milestone.description = 'Build problem-solving skills and deepen understanding';
-        milestone.successCriteria = [
-          'Master intermediate concepts',
-          'Achieve 80% accuracy on practice problems',
-          'Complete at least 2 full practice tests'
-        ];
-      } else if (week <= 10) {
-        milestone.title = 'Application Mastery';
-        milestone.description = 'Apply knowledge to complex, exam-style problems';
-        milestone.successCriteria = [
-          'Solve advanced application problems',
-          'Achieve 85% accuracy on AP-style questions',
-          'Complete comprehensive review of all topics'
-        ];
-      } else {
-        milestone.title = 'Exam Readiness';
-        milestone.description = 'Final preparation and confidence building';
-        milestone.successCriteria = [
-          'Score 4+ on practice AP exams',
-          'Complete final review of weak areas',
-          'Develop test-taking strategies'
-        ];
-      }
-      
-      milestones.push(milestone);
-    }
-    
+        title: `${subject.name} Foundation`,
+        description: `Complete foundational topics in ${subject.name} and demonstrate understanding through practice problems.`,
+        successCriteria: [
+          `Complete all ${subject.name} foundational topics`,
+          `Score 70%+ on ${subject.name} practice quiz`,
+          `Identify and address knowledge gaps`
+        ]
+      });
+    });
+
+    // Add final milestone
+    milestones.push({
+      week: Math.max(4, milestones.length + 1),
+      title: 'AP Exam Readiness',
+      description: 'Demonstrate mastery across all subjects through comprehensive practice exams and review.',
+      successCriteria: [
+        'Complete full-length AP practice exams',
+        'Achieve target scores on all practice exams',
+        'Review and reinforce weak areas identified'
+      ]
+    });
+
     return milestones;
   }
 
-  private generatePersonalizedRecommendations(userProfile: UserProfile, contentInsights: any): string[] {
+  private mapDifficulty(preferredDifficulty: string): string {
+    const difficultyMap = {
+      'easy': 'AP Supportive',
+      'medium': 'AP Balanced',
+      'hard': 'AP Challenging',
+      'adaptive': 'AP Adaptive'
+    };
+    return difficultyMap[preferredDifficulty as keyof typeof difficultyMap] || 'AP Balanced';
+  }
+
+  private generateRecommendations(userProfile: UserProfile, subjects: any[]): string[] {
     const recommendations = [];
     
     // Learning style recommendations
     switch (userProfile.learningStyle) {
       case 'visual':
-        recommendations.push('Use concept maps and diagrams to visualize relationships between topics');
-        recommendations.push('Create visual summaries and flowcharts for complex processes');
+        recommendations.push('Use diagrams and visual aids for complex concepts');
+        recommendations.push('Create mind maps for topic relationships');
         break;
       case 'auditory':
-        recommendations.push('Explain concepts out loud or teach them to others');
-        recommendations.push('Use audio resources and participate in study groups');
+        recommendations.push('Listen to educational podcasts during commute');
+        recommendations.push('Explain concepts aloud to reinforce learning');
         break;
       case 'kinesthetic':
-        recommendations.push('Use hands-on activities and simulations when possible');
-        recommendations.push('Take frequent breaks and incorporate movement into study sessions');
+        recommendations.push('Use hands-on activities and experiments');
+        recommendations.push('Take frequent breaks with physical movement');
         break;
       case 'reading':
-        recommendations.push('Take detailed notes and create written summaries');
-        recommendations.push('Read multiple sources to deepen understanding');
+        recommendations.push('Take detailed notes while reading');
+        recommendations.push('Summarize key concepts in writing');
         break;
     }
     
-    // Weak area recommendations
-    if (userProfile.weakAreas.length > 0) {
-      recommendations.push(`Focus extra time on ${userProfile.weakAreas.join(', ')} - consider additional tutoring or resources`);
-      recommendations.push('Start each study session with a brief review of challenging concepts');
-    }
-    
-    // Time management recommendations
-    if (userProfile.timeAvailable < 45) {
-      recommendations.push('Use micro-learning sessions - focus on one concept at a time');
-      recommendations.push('Utilize spaced repetition to maximize retention in limited time');
+    // Time-based recommendations
+    if (userProfile.timeAvailable < 30) {
+      recommendations.push('Focus on high-yield topics for maximum impact');
+      recommendations.push('Use spaced repetition for efficient memorization');
     } else if (userProfile.timeAvailable > 90) {
-      recommendations.push('Break longer sessions into focused blocks with breaks');
-      recommendations.push('Use extended time for deep practice and application problems');
-    }
-    
-    // Content-based recommendations
-    if (contentInsights.has_formulas) {
-      recommendations.push('Create a formula sheet and practice applying formulas in different contexts');
-    }
-    
-    if (contentInsights.has_examples) {
-      recommendations.push('Work through all examples in your materials and create similar problems');
+      recommendations.push('Include comprehensive practice sessions');
+      recommendations.push('Explore advanced applications and connections');
     }
     
     // Performance-based recommendations
-    if (userProfile.recentPerformance) {
-      if (userProfile.recentPerformance.accuracy < 70) {
-        recommendations.push('Focus on understanding concepts before attempting speed');
-        recommendations.push('Review incorrect answers thoroughly to identify patterns');
-      }
-      
-      if (userProfile.recentPerformance.consistency < 70) {
-        recommendations.push('Establish a regular study schedule and stick to it');
-        recommendations.push('Use consistent problem-solving approaches');
-      }
-    }
-    
-    return recommendations.slice(0, 8);
-  }
-
-  private calculateOptimalDuration(userProfile: UserProfile, subjectCount: number): number {
-    let baseDuration = 60; // 60 days base
-    
-    // Adjust for number of subjects
-    baseDuration += (subjectCount - 1) * 20;
-    
-    // Adjust for user level
     if (userProfile.level < 3) {
-      baseDuration += 30; // More time for beginners
-    } else if (userProfile.level > 7) {
-      baseDuration -= 20; // Less time for advanced users
+      recommendations.push('Start with foundational concepts before advancing');
+      recommendations.push('Use additional practice problems for skill building');
     }
     
-    // Adjust for available time
-    if (userProfile.timeAvailable < 30) {
-      baseDuration += 40; // More days needed with less daily time
-    } else if (userProfile.timeAvailable > 90) {
-      baseDuration -= 20; // Fewer days needed with more daily time
-    }
-    
-    // Adjust for weak areas
-    baseDuration += userProfile.weakAreas.length * 10;
-    
-    return Math.max(30, Math.min(baseDuration, 120)); // Between 30-120 days
+    return recommendations;
   }
 
-  private determineDifficulty(userProfile: UserProfile): string {
-    if (userProfile.preferredDifficulty !== 'adaptive') {
-      return userProfile.preferredDifficulty;
+  private generateEstimatedOutcome(subjects: any[], userProfile: UserProfile): string {
+    const subjectCount = subjects.length;
+    const timeCommitment = userProfile.timeAvailable;
+    
+    let outcome = `After completing this study plan, you should be well-prepared for ${subjectCount} AP exam${subjectCount > 1 ? 's' : ''}. `;
+    
+    if (timeCommitment >= 60) {
+      outcome += 'With your dedicated study schedule, you\'re positioned to achieve scores of 4-5 on your AP exams.';
+    } else {
+      outcome += 'With consistent effort, you should achieve solid scores of 3-4 on your AP exams.';
     }
     
-    // Adaptive difficulty based on user profile
-    const score = userProfile.level * 10 + 
-                  userProfile.totalStars / 10 + 
-                  (userProfile.strongAreas.length * 5) - 
-                  (userProfile.weakAreas.length * 5);
-    
-    if (score < 50) return 'AP Supportive';
-    if (score < 100) return 'AP Balanced';
-    return 'AP Challenging';
-  }
-
-  private generatePersonalizedOutcome(userProfile: UserProfile, subjects: any[]): string {
-    const subjectNames = subjects.map(s => s.name).join(', ');
-    const weakAreaFocus = userProfile.weakAreas.length > 0 ? 
-      ` with significant improvement in ${userProfile.weakAreas.join(', ')}` : '';
-    
-    return `Upon completion, you will have mastered ${subjectNames}${weakAreaFocus}. ` +
-           `Based on your ${userProfile.learningStyle} learning style and current level ${userProfile.level}, ` +
-           `you should be well-prepared for AP exam success with predicted scores of 4-5.`;
+    return outcome;
   }
 
   private calculateConfidence(userProfile: UserProfile, subjects: any[]): number {
     let confidence = 70; // Base confidence
     
-    // Adjust for user level
-    confidence += Math.min(userProfile.level * 3, 15);
+    // Adjust based on user level
+    confidence += Math.min(20, userProfile.level * 3);
     
-    // Adjust for experience (total stars)
-    confidence += Math.min(userProfile.totalStars / 50, 10);
+    // Adjust based on time commitment
+    if (userProfile.timeAvailable >= 60) confidence += 10;
+    if (userProfile.timeAvailable >= 90) confidence += 5;
     
-    // Adjust for consistency (current streak)
-    confidence += Math.min(userProfile.currentStreak / 2, 10);
+    // Adjust based on current performance
+    if (userProfile.totalStars > 100) confidence += 5;
+    if (userProfile.currentStreak > 7) confidence += 5;
     
-    // Adjust for weak areas (negative impact)
-    confidence -= userProfile.weakAreas.length * 3;
+    // Adjust based on number of subjects (more subjects = lower confidence per subject)
+    confidence -= Math.max(0, (subjects.length - 2) * 5);
     
-    // Adjust for strong areas (positive impact)
-    confidence += userProfile.strongAreas.length * 2;
-    
-    // Adjust for time availability
-    if (userProfile.timeAvailable >= 60) {
-      confidence += 5;
-    } else if (userProfile.timeAvailable < 30) {
-      confidence -= 5;
-    }
-    
-    return Math.max(60, Math.min(confidence, 95));
+    return Math.min(95, Math.max(60, confidence));
   }
 
   async generateStudyContent(
@@ -819,22 +494,20 @@ class AIEngine {
     difficulty: string, 
     learningStyle: string
   ): Promise<StudyContent> {
-    console.log(`🎯 Generating personalized study content for ${topic} in ${subject}`);
+    console.log('🎯 Generating study content for:', { subject, topic, difficulty, learningStyle });
     
+    // Use OpenAI if available
     if (this.hasOpenAI) {
       try {
-        console.log('🔥 Using OpenAI for enhanced content generation');
         const content = await openaiService.generateStudyContent(subject, topic, difficulty, learningStyle);
-        console.log('✅ OpenAI content generated successfully');
-        return content;
+        return this.validateAndFormatContent(content);
       } catch (error) {
-        console.warn('⚠️ OpenAI failed, falling back to local content generation:', error);
-        return this.generateLocalStudyContent(subject, topic, difficulty, learningStyle);
+        console.warn('OpenAI content generation failed, using local generation:', error);
       }
-    } else {
-      console.log('🧠 Using advanced local content generation');
-      return this.generateLocalStudyContent(subject, topic, difficulty, learningStyle);
     }
+    
+    // Fallback to local content generation
+    return this.generateLocalStudyContent(subject, topic, difficulty, learningStyle);
   }
 
   private generateLocalStudyContent(
@@ -843,318 +516,70 @@ class AIEngine {
     difficulty: string, 
     learningStyle: string
   ): StudyContent {
-    console.log(`📚 Generating local content for ${topic} (${difficulty}, ${learningStyle})`);
-    
-    // Generate personalized question based on subject and topic
-    const questionData = this.generatePersonalizedQuestion(subject, topic, difficulty);
-    
-    // Customize explanation based on learning style
-    const explanation = this.customizeExplanationForLearningStyle(
-      questionData.explanation, 
-      learningStyle, 
-      topic
-    );
-    
-    // Generate learning style specific elements
-    const visualAid = this.generateVisualAid(topic, learningStyle);
-    const interactiveElement = this.generateInteractiveElement(topic, learningStyle);
-    
-    return {
-      question: questionData.question,
-      options: questionData.options,
-      correct: questionData.correct,
-      explanation,
-      hint: this.generatePersonalizedHint(topic, difficulty, learningStyle),
-      points: this.calculatePoints(difficulty),
-      concepts: this.extractConcepts(subject, topic),
-      apSkills: this.identifyAPSkills(subject, topic),
-      visualAid,
-      audioExplanation: learningStyle === 'auditory' ? 'Available' : undefined,
-      interactiveElement,
-      commonMistakes: this.generateCommonMistakes(subject, topic)
-    };
-  }
-
-  private generatePersonalizedQuestion(subject: string, topic: string, difficulty: string): any {
-    const questionTemplates = this.getQuestionTemplates(subject, topic);
-    const template = questionTemplates[Math.floor(Math.random() * questionTemplates.length)];
-    
-    // Adjust question complexity based on difficulty
-    let question = template.question;
-    let options = [...template.options];
-    
-    if (difficulty === 'Advanced' || difficulty === 'Expert') {
-      question = question.replace('basic', 'advanced').replace('simple', 'complex');
-      options = options.map(opt => opt.replace('basic', 'advanced'));
-    } else if (difficulty === 'Beginner') {
-      question = question.replace('advanced', 'basic').replace('complex', 'simple');
-      options = options.map(opt => opt.replace('advanced', 'basic'));
-    }
-    
-    return {
-      question,
-      options,
-      correct: template.correct,
-      explanation: template.explanation
-    };
-  }
-
-  private getQuestionTemplates(subject: string, topic: string): any[] {
-    // Comprehensive question templates for different AP subjects
-    const templates: { [key: string]: any[] } = {
-      'AP Calculus AB': [
-        {
-          question: `What is the fundamental concept behind ${topic} in calculus?`,
-          options: [
-            'Rate of change and accumulation',
-            'Algebraic manipulation only',
-            'Geometric visualization only',
-            'Memorization of formulas'
-          ],
-          correct: 0,
-          explanation: `${topic} in calculus focuses on understanding rates of change and accumulation, which are fundamental to solving real-world problems.`
-        },
-        {
-          question: `How would you apply ${topic} to solve a real-world problem?`,
-          options: [
-            'Identify the variable relationships and set up appropriate equations',
-            'Memorize standard formulas and substitute values',
-            'Use only graphical methods',
-            'Avoid mathematical modeling'
-          ],
-          correct: 0,
-          explanation: `Applying ${topic} requires identifying relationships between variables and setting up mathematical models that represent the real situation.`
-        }
-      ],
-      'AP Physics 1': [
-        {
-          question: `What is the key principle underlying ${topic} in physics?`,
-          options: [
-            'Conservation laws and fundamental interactions',
-            'Mathematical complexity only',
-            'Memorization of equations',
-            'Abstract theoretical concepts only'
-          ],
-          correct: 0,
-          explanation: `${topic} in physics is governed by conservation laws and fundamental interactions that explain natural phenomena.`
-        },
-        {
-          question: `How does ${topic} connect to other areas of physics?`,
-          options: [
-            'Through fundamental principles that apply across different phenomena',
-            'It operates in complete isolation',
-            'Only through mathematical similarity',
-            'No connections exist'
-          ],
-          correct: 0,
-          explanation: `${topic} connects to other physics areas through fundamental principles like conservation of energy, momentum, and other universal laws.`
-        }
-      ],
-      'AP Chemistry': [
-        {
-          question: `What is the molecular basis of ${topic} in chemistry?`,
-          options: [
-            'Atomic and molecular interactions based on electron behavior',
-            'Random chemical events',
-            'Only macroscopic observations',
-            'Purely theoretical constructs'
-          ],
-          correct: 0,
-          explanation: `${topic} in chemistry is fundamentally based on how atoms and molecules interact through electron behavior and bonding.`
-        }
-      ],
-      'AP Biology': [
-        {
-          question: `How does ${topic} demonstrate the unity and diversity of life?`,
-          options: [
-            'Through common mechanisms with evolutionary variations',
-            'Complete uniformity across all species',
-            'Random biological processes',
-            'Isolated biological phenomena'
-          ],
-          correct: 0,
-          explanation: `${topic} shows how life uses common fundamental mechanisms while evolving diverse solutions to environmental challenges.`
-        }
-      ],
-      'AP Computer Science A': [
-        {
-          question: `What is the fundamental programming concept illustrated by ${topic}?`,
-          options: [
-            'Abstraction and problem decomposition',
-            'Memorizing syntax only',
-            'Random code generation',
-            'Avoiding systematic approaches'
-          ],
-          correct: 0,
-          explanation: `${topic} in computer science demonstrates how abstraction and systematic problem decomposition lead to elegant solutions.`
-        }
-      ]
-    };
-    
-    // Return templates for the subject, or generic templates if subject not found
-    return templates[subject] || [
-      {
-        question: `What is the most important aspect of understanding ${topic}?`,
-        options: [
-          'Grasping the underlying principles and their applications',
-          'Memorizing facts without understanding',
-          'Avoiding practical applications',
-          'Focusing only on test-taking strategies'
-        ],
-        correct: 0,
-        explanation: `Understanding ${topic} requires grasping the underlying principles and seeing how they apply to solve real problems.`
-      }
-    ];
-  }
-
-  private customizeExplanationForLearningStyle(
-    baseExplanation: string, 
-    learningStyle: string, 
-    topic: string
-  ): string {
-    let customizedExplanation = baseExplanation;
-    
-    switch (learningStyle) {
-      case 'visual':
-        customizedExplanation += ` Visualize this concept by creating diagrams or graphs that show the relationships in ${topic}.`;
-        break;
-      case 'auditory':
-        customizedExplanation += ` Try explaining ${topic} out loud or discussing it with others to reinforce your understanding.`;
-        break;
-      case 'kinesthetic':
-        customizedExplanation += ` Practice ${topic} through hands-on activities, simulations, or real-world applications.`;
-        break;
-      case 'reading':
-        customizedExplanation += ` Read additional sources about ${topic} and take detailed notes to deepen your understanding.`;
-        break;
-    }
-    
-    return customizedExplanation;
-  }
-
-  private generatePersonalizedHint(topic: string, difficulty: string, learningStyle: string): string {
-    let hint = `Think about the fundamental principles of ${topic}`;
-    
-    if (difficulty === 'Beginner') {
-      hint = `Start with the basic definition of ${topic} and build from there`;
-    } else if (difficulty === 'Advanced') {
-      hint = `Consider how ${topic} connects to advanced applications and other concepts`;
-    }
-    
-    // Add learning style specific hint
-    switch (learningStyle) {
-      case 'visual':
-        hint += '. Try drawing a diagram to visualize the concept.';
-        break;
-      case 'auditory':
-        hint += '. Try explaining the concept out loud.';
-        break;
-      case 'kinesthetic':
-        hint += '. Think about how you could demonstrate this concept physically.';
-        break;
-      case 'reading':
-        hint += '. Consider writing out the key points step by step.';
-        break;
-    }
-    
-    return hint;
-  }
-
-  private generateVisualAid(topic: string, learningStyle: string): string {
-    if (learningStyle !== 'visual') return '';
-    
-    const visualTypes = [
-      `Interactive ${topic} diagram`,
-      `${topic} concept map`,
-      `${topic} flowchart`,
-      `${topic} graph visualization`,
-      `${topic} 3D model`
-    ];
-    
-    return visualTypes[Math.floor(Math.random() * visualTypes.length)];
-  }
-
-  private generateInteractiveElement(topic: string, learningStyle: string): string {
-    const elements = {
-      visual: `${topic} interactive diagram`,
-      auditory: `${topic} audio explanation`,
-      kinesthetic: `${topic} hands-on simulation`,
-      reading: `${topic} detailed text analysis`
-    };
-    
-    return elements[learningStyle as keyof typeof elements] || `${topic} interactive component`;
-  }
-
-  private calculatePoints(difficulty: string): number {
-    const pointMap = {
+    const difficultyPoints = {
       'Beginner': 10,
       'Intermediate': 15,
       'Advanced': 22,
       'Expert': 30
     };
-    
-    return pointMap[difficulty as keyof typeof pointMap] || 15;
-  }
 
-  private extractConcepts(subject: string, topic: string): string[] {
-    const conceptMap: { [key: string]: string[] } = {
-      'AP Calculus AB': ['derivatives', 'integrals', 'limits', 'functions', 'rates of change'],
-      'AP Physics 1': ['forces', 'energy', 'momentum', 'waves', 'motion'],
-      'AP Chemistry': ['atoms', 'molecules', 'reactions', 'bonding', 'equilibrium'],
-      'AP Biology': ['cells', 'genetics', 'evolution', 'ecology', 'molecular biology'],
-      'AP Computer Science A': ['algorithms', 'data structures', 'objects', 'methods', 'inheritance']
-    };
-    
-    const baseConcepts = conceptMap[subject] || ['analysis', 'application', 'synthesis'];
-    return [topic, ...baseConcepts.slice(0, 3)];
-  }
-
-  private identifyAPSkills(subject: string, topic: string): string[] {
-    const skillMap: { [key: string]: string[] } = {
-      'AP Calculus AB': ['Mathematical Reasoning', 'Problem Solving', 'Modeling'],
-      'AP Physics 1': ['Scientific Reasoning', 'Experimental Design', 'Data Analysis'],
-      'AP Chemistry': ['Chemical Reasoning', 'Laboratory Skills', 'Mathematical Analysis'],
-      'AP Biology': ['Scientific Investigation', 'Data Analysis', 'Conceptual Understanding'],
-      'AP Computer Science A': ['Program Design', 'Algorithm Implementation', 'Code Analysis']
-    };
-    
-    return skillMap[subject] || ['Analysis', 'Application', 'Synthesis'];
-  }
-
-  private generateCommonMistakes(subject: string, topic: string): string[] {
-    const mistakeMap: { [key: string]: string[] } = {
-      'AP Calculus AB': [
-        'Confusing derivative and integral operations',
-        'Forgetting to apply the chain rule',
-        'Misunderstanding the fundamental theorem of calculus'
+    return {
+      type: 'multiple_choice',
+      title: `${topic} - AP Concepts`,
+      question: `Which of the following best describes the key concept of ${topic} in ${subject}?`,
+      options: [
+        `${topic} involves understanding fundamental principles and their applications`,
+        `${topic} is primarily about memorizing formulas and procedures`,
+        `${topic} focuses only on theoretical knowledge without practical use`,
+        `${topic} is an advanced concept not needed for AP exams`
       ],
-      'AP Physics 1': [
-        'Confusing velocity and acceleration',
-        'Forgetting to consider all forces in equilibrium',
-        'Misapplying conservation laws'
-      ],
-      'AP Chemistry': [
-        'Confusing molecular and empirical formulas',
-        'Forgetting to balance chemical equations',
-        'Misunderstanding equilibrium concepts'
-      ],
-      'AP Biology': [
-        'Confusing mitosis and meiosis processes',
-        'Misunderstanding natural selection mechanisms',
-        'Forgetting about enzyme specificity'
-      ],
-      'AP Computer Science A': [
-        'Confusing assignment and equality operators',
-        'Forgetting array bounds checking',
-        'Misunderstanding object references vs. values'
+      correct: 0,
+      explanation: `${topic} in ${subject} requires both conceptual understanding and practical application skills. This combination is essential for success on AP exams, where you need to demonstrate deep comprehension and problem-solving abilities.`,
+      hint: `Think about how ${topic} concepts are applied in real-world scenarios and AP exam questions.`,
+      points: difficultyPoints[difficulty as keyof typeof difficultyPoints] || 15,
+      difficulty: difficulty.toLowerCase(),
+      concepts: [topic, subject, 'AP Problem Solving'],
+      apSkills: ['Knowledge', 'Comprehension', 'Application'],
+      visualAid: `${topic.toLowerCase()}_${learningStyle}_diagram`,
+      audioExplanation: 'Available',
+      interactiveElement: this.getInteractiveElement(learningStyle, topic),
+      commonMistakes: [
+        `Confusing ${topic} with related concepts`,
+        'Focusing only on memorization without understanding',
+        'Not practicing enough AP-style problems'
       ]
     };
-    
-    return mistakeMap[subject] || [
-      `Misunderstanding fundamental ${topic} concepts`,
-      `Rushing through ${topic} problems without careful analysis`,
-      `Not connecting ${topic} to real-world applications`
-    ];
+  }
+
+  private getInteractiveElement(learningStyle: string, topic: string): string {
+    const elements = {
+      'visual': `interactive_${topic.toLowerCase()}_diagram`,
+      'auditory': `${topic.toLowerCase()}_audio_explanation`,
+      'kinesthetic': `hands_on_${topic.toLowerCase()}_simulation`,
+      'reading': `detailed_${topic.toLowerCase()}_text_analysis`
+    };
+    return elements[learningStyle as keyof typeof elements] || 'concept_builder';
+  }
+
+  private validateAndFormatContent(content: any): StudyContent {
+    // Ensure required fields exist
+    return {
+      type: content.type || 'multiple_choice',
+      title: content.title || 'Study Content',
+      question: content.question || 'What is the main concept?',
+      options: content.options || ['Option A', 'Option B', 'Option C', 'Option D'],
+      correct: content.correct || 0,
+      explanation: content.explanation || 'This is the explanation.',
+      hint: content.hint || 'Think about the key concepts.',
+      points: content.points || 15,
+      difficulty: content.difficulty || 'intermediate',
+      concepts: content.concepts || ['General'],
+      apSkills: content.apSkills || ['Knowledge'],
+      visualAid: content.visualAid || 'diagram',
+      audioExplanation: content.audioExplanation || 'Available',
+      interactiveElement: content.interactiveElement || 'concept_builder',
+      commonMistakes: content.commonMistakes || []
+    };
   }
 
   async generateQuestionSets(
@@ -1163,305 +588,157 @@ class AIEngine {
     difficulty: string, 
     userProfile: UserProfile
   ): Promise<QuestionSet[]> {
-    console.log(`🎯 Generating personalized question sets for ${topic}`);
+    console.log('📝 Generating question sets for:', { subject, topic, difficulty });
     
-    if (this.hasOpenAI) {
-      try {
-        // Use OpenAI for more sophisticated question generation
-        const questionSets = await this.generateOpenAIQuestionSets(subject, topic, difficulty, userProfile);
-        console.log('✅ OpenAI question sets generated');
-        return questionSets;
-      } catch (error) {
-        console.warn('⚠️ OpenAI question generation failed, using local generation:', error);
-        return this.generateLocalQuestionSets(subject, topic, difficulty, userProfile);
-      }
-    } else {
-      return this.generateLocalQuestionSets(subject, topic, difficulty, userProfile);
-    }
-  }
-
-  private async generateOpenAIQuestionSets(
-    subject: string, 
-    topic: string, 
-    difficulty: string, 
-    userProfile: UserProfile
-  ): Promise<QuestionSet[]> {
-    // This would use OpenAI to generate more sophisticated, personalized questions
-    // For now, fall back to local generation
-    return this.generateLocalQuestionSets(subject, topic, difficulty, userProfile);
-  }
-
-  private generateLocalQuestionSets(
-    subject: string, 
-    topic: string, 
-    difficulty: string, 
-    userProfile: UserProfile
-  ): QuestionSet[] {
+    // Generate multiple question sets for variety
     const questionSets: QuestionSet[] = [];
     
-    // Generate different types of question sets
-    const setTypes = [
-      { title: 'Conceptual Understanding', type: 'multiple_choice' },
-      { title: 'Problem Solving', type: 'problem_solving' },
-      { title: 'Application', type: 'short_answer' }
-    ];
+    // Conceptual Understanding Set
+    questionSets.push({
+      title: 'Conceptual Understanding',
+      questions: this.generateConceptualQuestions(subject, topic, difficulty)
+    });
     
-    setTypes.forEach(setType => {
-      const questions = [];
-      
-      for (let i = 0; i < 4; i++) {
-        const question = this.generatePersonalizedQuestionForSet(
-          subject, 
-          topic, 
-          difficulty, 
-          setType.type as any, 
-          userProfile,
-          i
-        );
-        questions.push(question);
-      }
-      
-      questionSets.push({
-        title: setType.title,
-        description: `${setType.title} questions for ${topic} in ${subject}`,
-        difficulty,
-        questions
-      });
+    // Application Problems Set
+    questionSets.push({
+      title: 'Application Problems',
+      questions: this.generateApplicationQuestions(subject, topic, difficulty)
+    });
+    
+    // AP Exam Style Set
+    questionSets.push({
+      title: 'AP Exam Style',
+      questions: this.generateAPStyleQuestions(subject, topic, difficulty)
     });
     
     return questionSets;
   }
 
-  private generatePersonalizedQuestionForSet(
-    subject: string,
-    topic: string,
-    difficulty: string,
-    type: 'multiple_choice' | 'short_answer' | 'essay' | 'problem_solving',
-    userProfile: UserProfile,
-    index: number
-  ): any {
-    const baseQuestion = this.getBaseQuestionForType(subject, topic, type, index);
+  private generateConceptualQuestions(subject: string, topic: string, difficulty: string): any[] {
+    const questions = [];
+    const basePoints = difficulty === 'Beginner' ? 10 : difficulty === 'Intermediate' ? 15 : 20;
     
-    // Personalize based on user profile
-    let personalizedQuestion = baseQuestion.question;
-    let personalizedExplanation = baseQuestion.explanation;
-    
-    // Adjust for learning style
-    if (userProfile.learningStyle === 'visual' && type === 'multiple_choice') {
-      personalizedQuestion = personalizedQuestion.replace('Which', 'Looking at a diagram, which');
-    } else if (userProfile.learningStyle === 'kinesthetic' && type === 'problem_solving') {
-      personalizedQuestion = personalizedQuestion.replace('Calculate', 'Through hands-on practice, calculate');
+    for (let i = 0; i < 3; i++) {
+      questions.push({
+        type: 'multiple_choice',
+        question: `What is a key principle of ${topic} in ${subject}?`,
+        options: [
+          `Understanding the fundamental concepts and their relationships`,
+          `Memorizing all formulas without understanding`,
+          `Focusing only on computational skills`,
+          `Avoiding practical applications`
+        ],
+        correctAnswer: 0,
+        explanation: `${topic} requires deep conceptual understanding to succeed in ${subject} and on AP exams.`,
+        hint: `Think about the underlying principles rather than just procedures.`,
+        points: basePoints,
+        concepts: [topic, subject, 'Conceptual Understanding'],
+        apSkills: ['Knowledge', 'Comprehension']
+      });
     }
     
-    // Adjust for difficulty and user level
-    if (difficulty === 'Beginner' || userProfile.level < 3) {
-      personalizedQuestion = personalizedQuestion.replace('advanced', 'basic');
-      personalizedExplanation += ' Start with the fundamental concepts and build up your understanding step by step.';
-    } else if (difficulty === 'Advanced' || userProfile.level > 7) {
-      personalizedQuestion = personalizedQuestion.replace('basic', 'advanced');
-      personalizedExplanation += ' Consider the broader implications and connections to other advanced topics.';
+    return questions;
+  }
+
+  private generateApplicationQuestions(subject: string, topic: string, difficulty: string): any[] {
+    const questions = [];
+    const basePoints = difficulty === 'Beginner' ? 12 : difficulty === 'Intermediate' ? 18 : 25;
+    
+    for (let i = 0; i < 3; i++) {
+      questions.push({
+        type: 'multiple_choice',
+        question: `How would you apply ${topic} concepts to solve a real-world problem in ${subject}?`,
+        options: [
+          `Identify the relevant principles and apply them systematically`,
+          `Use trial and error without understanding`,
+          `Memorize similar problems and copy the approach`,
+          `Avoid using ${topic} concepts altogether`
+        ],
+        correctAnswer: 0,
+        explanation: `Successful application of ${topic} requires identifying relevant principles and applying them systematically to new situations.`,
+        hint: `Consider how the concepts connect to practical scenarios.`,
+        points: basePoints,
+        concepts: [topic, subject, 'Problem Solving', 'Application'],
+        apSkills: ['Application', 'Analysis']
+      });
     }
     
-    return {
-      type,
-      question: personalizedQuestion,
-      options: baseQuestion.options,
-      correctAnswer: baseQuestion.correctAnswer,
-      explanation: personalizedExplanation,
-      hint: this.generatePersonalizedHint(topic, difficulty, userProfile.learningStyle),
-      points: this.calculatePoints(difficulty),
-      concepts: this.extractConcepts(subject, topic),
-      apSkills: this.identifyAPSkills(subject, topic),
-      commonMistakes: this.generateCommonMistakes(subject, topic)
-    };
+    return questions;
   }
 
-  private getBaseQuestionForType(
-    subject: string,
-    topic: string,
-    type: string,
-    index: number
-  ): any {
-    const questionBases = {
-      multiple_choice: [
-        {
-          question: `Which of the following best describes the fundamental principle of ${topic}?`,
-          options: [
-            `The core concept that governs ${topic} behavior`,
-            `A secondary characteristic of ${topic}`,
-            `An unrelated mathematical formula`,
-            `A historical footnote about ${topic}`
-          ],
-          correctAnswer: 0,
-          explanation: `The fundamental principle of ${topic} is essential for understanding how it works and applies to different situations.`
-        },
-        {
-          question: `How does ${topic} relate to other concepts in ${subject}?`,
-          options: [
-            `It connects through shared underlying principles`,
-            `It operates in complete isolation`,
-            `It contradicts other concepts`,
-            `It has no meaningful relationships`
-          ],
-          correctAnswer: 0,
-          explanation: `${topic} connects to other concepts in ${subject} through shared principles and complementary applications.`
-        }
-      ],
-      problem_solving: [
-        {
-          question: `Solve this ${topic} problem: Given the conditions described, find the solution using appropriate ${topic} methods.`,
-          options: [],
-          correctAnswer: 'Step-by-step solution using established methods',
-          explanation: `This problem requires applying ${topic} methods systematically to reach the correct solution.`
-        }
-      ],
-      short_answer: [
-        {
-          question: `Explain how ${topic} is applied in real-world scenarios within ${subject}.`,
-          options: [],
-          correctAnswer: `Real-world applications demonstrate the practical importance of ${topic}`,
-          explanation: `${topic} has numerous practical applications that demonstrate its relevance and importance in ${subject}.`
-        }
-      ]
-    };
+  private generateAPStyleQuestions(subject: string, topic: string, difficulty: string): any[] {
+    const questions = [];
+    const basePoints = difficulty === 'Beginner' ? 15 : difficulty === 'Intermediate' ? 22 : 30;
     
-    const typeQuestions = questionBases[type as keyof typeof questionBases] || questionBases.multiple_choice;
-    return typeQuestions[index % typeQuestions.length];
-  }
-
-  async trackSessionProgress(sessionData: any): Promise<void> {
-    console.log('📊 Tracking session progress for AI adaptation:', sessionData);
-    
-    // Store session data for future personalization
-    try {
-      const progressKey = `ai_session_${sessionData.userId}_${Date.now()}`;
-      localStorage.setItem(progressKey, JSON.stringify({
-        ...sessionData,
-        timestamp: new Date().toISOString()
-      }));
-      
-      // Keep only recent sessions (last 50)
-      const allKeys = Object.keys(localStorage).filter(key => key.startsWith(`ai_session_${sessionData.userId}`));
-      if (allKeys.length > 50) {
-        const sortedKeys = allKeys.sort();
-        const keysToRemove = sortedKeys.slice(0, allKeys.length - 50);
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-      }
-      
-      console.log('✅ Session progress tracked successfully');
-    } catch (error) {
-      console.error('❌ Error tracking session progress:', error);
+    for (let i = 0; i < 4; i++) {
+      questions.push({
+        type: 'multiple_choice',
+        question: `[AP Style] In the context of ${subject}, which statement about ${topic} is most accurate?`,
+        options: [
+          `${topic} demonstrates complex relationships that require analytical thinking`,
+          `${topic} is a simple concept with no real-world applications`,
+          `${topic} only applies to theoretical situations`,
+          `${topic} can be understood through memorization alone`
+        ],
+        correctAnswer: 0,
+        explanation: `AP exams test your ability to analyze complex relationships and apply concepts to various contexts, which is exactly what ${topic} requires in ${subject}.`,
+        hint: `AP questions often test analytical thinking and application rather than simple recall.`,
+        points: basePoints,
+        concepts: [topic, subject, 'AP Analysis', 'Critical Thinking'],
+        apSkills: ['Analysis', 'Synthesis', 'Evaluation']
+      });
     }
+    
+    return questions;
   }
 
-  getPersonalizationInsights(userId: string): any {
-    try {
-      const sessionKeys = Object.keys(localStorage).filter(key => key.startsWith(`ai_session_${userId}`));
-      const sessions = sessionKeys.map(key => JSON.parse(localStorage.getItem(key) || '{}'));
-      
-      if (sessions.length === 0) {
-        return { hasData: false };
+  async trackSessionProgress(sessionData: {
+    userId: string;
+    subject: string;
+    topic: string;
+    startTime: Date;
+    endTime: Date;
+    duration: number;
+    questionsAnswered: number;
+    correctAnswers: number;
+    accuracy: number;
+    starsEarned: number;
+    conceptsMastered: string[];
+    areasForImprovement: string[];
+  }): Promise<void> {
+    console.log('📊 Tracking session progress:', sessionData);
+    
+    // In a real implementation, this would update user analytics
+    // For now, we'll just log the progress
+    const progressSummary = {
+      subject: sessionData.subject,
+      topic: sessionData.topic,
+      performance: {
+        accuracy: Math.round(sessionData.accuracy),
+        duration: sessionData.duration,
+        starsEarned: sessionData.starsEarned
+      },
+      learning: {
+        conceptsMastered: sessionData.conceptsMastered.length,
+        areasForImprovement: sessionData.areasForImprovement.length
       }
-      
-      // Analyze session data for insights
-      const totalSessions = sessions.length;
-      const averageAccuracy = sessions.reduce((sum, s) => sum + (s.accuracy || 0), 0) / totalSessions;
-      const commonWeakAreas = this.identifyCommonWeakAreas(sessions);
-      const preferredDifficulty = this.identifyPreferredDifficulty(sessions);
-      const studyPatterns = this.identifyStudyPatterns(sessions);
-      
-      return {
-        hasData: true,
-        totalSessions,
-        averageAccuracy,
-        commonWeakAreas,
-        preferredDifficulty,
-        studyPatterns,
-        lastSessionDate: sessions[sessions.length - 1]?.timestamp
-      };
-    } catch (error) {
-      console.error('Error getting personalization insights:', error);
-      return { hasData: false };
-    }
-  }
-
-  private identifyCommonWeakAreas(sessions: any[]): string[] {
-    const weakAreas: { [key: string]: number } = {};
-    
-    sessions.forEach(session => {
-      if (session.areasForImprovement) {
-        session.areasForImprovement.forEach((area: string) => {
-          weakAreas[area] = (weakAreas[area] || 0) + 1;
-        });
-      }
-    });
-    
-    return Object.entries(weakAreas)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 3)
-      .map(([area]) => area);
-  }
-
-  private identifyPreferredDifficulty(sessions: any[]): string {
-    const difficultyPerformance: { [key: string]: number[] } = {};
-    
-    sessions.forEach(session => {
-      const difficulty = session.difficulty || 'medium';
-      if (!difficultyPerformance[difficulty]) {
-        difficultyPerformance[difficulty] = [];
-      }
-      difficultyPerformance[difficulty].push(session.accuracy || 0);
-    });
-    
-    let bestDifficulty = 'medium';
-    let bestScore = 0;
-    
-    Object.entries(difficultyPerformance).forEach(([difficulty, accuracies]) => {
-      const avgAccuracy = accuracies.reduce((sum, acc) => sum + acc, 0) / accuracies.length;
-      const consistencyBonus = accuracies.length > 3 ? 5 : 0; // Bonus for consistent practice
-      const totalScore = avgAccuracy + consistencyBonus;
-      
-      if (totalScore > bestScore) {
-        bestScore = totalScore;
-        bestDifficulty = difficulty;
-      }
-    });
-    
-    return bestDifficulty;
-  }
-
-  private identifyStudyPatterns(sessions: any[]): any {
-    const patterns = {
-      preferredSessionLength: 0,
-      mostActiveTimeOfDay: 'morning',
-      averageQuestionsPerSession: 0,
-      consistencyScore: 0
     };
     
-    if (sessions.length === 0) return patterns;
+    console.log('📈 Session Progress Summary:', progressSummary);
     
-    // Calculate average session length
-    const durations = sessions.map(s => s.duration || 30);
-    patterns.preferredSessionLength = durations.reduce((sum, d) => sum + d, 0) / durations.length;
+    // Store in localStorage for guest users or future analytics
+    const progressHistory = JSON.parse(localStorage.getItem('apollo_progress_history') || '[]');
+    progressHistory.push({
+      ...progressSummary,
+      timestamp: new Date().toISOString()
+    });
     
-    // Calculate average questions per session
-    const questionCounts = sessions.map(s => s.questionsAnswered || 5);
-    patterns.averageQuestionsPerSession = questionCounts.reduce((sum, q) => sum + q, 0) / questionCounts.length;
-    
-    // Calculate consistency score (based on regular study intervals)
-    const dates = sessions.map(s => new Date(s.timestamp || Date.now()));
-    const intervals = [];
-    for (let i = 1; i < dates.length; i++) {
-      const interval = dates[i].getTime() - dates[i-1].getTime();
-      intervals.push(interval / (1000 * 60 * 60 * 24)); // Convert to days
+    // Keep only last 50 sessions
+    if (progressHistory.length > 50) {
+      progressHistory.splice(0, progressHistory.length - 50);
     }
     
-    if (intervals.length > 0) {
-      const avgInterval = intervals.reduce((sum, i) => sum + i, 0) / intervals.length;
-      patterns.consistencyScore = Math.max(0, 100 - (avgInterval - 1) * 10); // Penalty for gaps > 1 day
-    }
-    
-    return patterns;
+    localStorage.setItem('apollo_progress_history', JSON.stringify(progressHistory));
   }
 }
 
