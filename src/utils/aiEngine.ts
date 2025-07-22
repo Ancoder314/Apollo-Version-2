@@ -175,8 +175,12 @@ class AIEngine {
   ): Promise<StudyPlan> {
     console.log('🧠 Generating local AI study plan...');
     
+    // Analyze uploaded materials if provided
+    const materialAnalysis = additionalInfo ? this.analyzeMaterials(additionalInfo) : null;
+    console.log('📄 Material analysis:', materialAnalysis);
+    
     // Analyze goals to identify AP subjects
-    const apSubjects = this.identifyAPSubjects(goals);
+    const apSubjects = this.identifyAPSubjects(goals, materialAnalysis);
     
     if (apSubjects.length === 0) {
       throw new Error('No AP subjects identified from your goals. Please be more specific about which AP courses you want to study.');
@@ -187,20 +191,20 @@ class AIEngine {
       name: subject.name,
       priority: this.determinePriority(subject.name, userProfile.weakAreas, userProfile.strongAreas),
       timeAllocation: Math.round(100 / apSubjects.length),
-      topics: this.generateTopicsForSubject(subject.name, userProfile.learningStyle),
-      reasoning: this.generateReasoning(subject.name, userProfile)
+      topics: this.generateTopicsForSubject(subject.name, userProfile.learningStyle, materialAnalysis),
+      reasoning: this.generateReasoning(subject.name, userProfile, materialAnalysis)
     }));
 
     // Generate milestones
-    const milestones = this.generateMilestones(subjects, userProfile.timeAvailable);
+    const milestones = this.generateMilestones(subjects, userProfile.timeAvailable, materialAnalysis);
 
     // Calculate duration based on subjects and time available
     const totalTopics = subjects.reduce((sum, subject) => sum + subject.topics.length, 0);
-    const estimatedDuration = Math.max(30, Math.min(120, totalTopics * 3));
+    const estimatedDuration = materialAnalysis?.suggestedDuration || Math.max(30, Math.min(120, totalTopics * 3));
 
     return {
       title: `Personalized AP Study Plan for ${userProfile.name}`,
-      description: `A comprehensive ${estimatedDuration}-day AP study plan covering ${subjects.length} AP subjects, tailored to your ${userProfile.learningStyle} learning style and ${userProfile.timeAvailable}-minute daily sessions.`,
+      description: `A comprehensive ${estimatedDuration}-day AP study plan covering ${subjects.length} AP subjects, tailored to your ${userProfile.learningStyle} learning style and ${userProfile.timeAvailable}-minute daily sessions.${materialAnalysis ? ' Customized based on your uploaded materials and course requirements.' : ''}`,
       duration: estimatedDuration,
       dailyTimeCommitment: userProfile.timeAvailable,
       difficulty: this.mapDifficulty(userProfile.preferredDifficulty),
@@ -211,13 +215,159 @@ class AIEngine {
         personalizedContent: true,
         progressTracking: true
       },
-      personalizedRecommendations: this.generateRecommendations(userProfile, subjects),
-      estimatedOutcome: this.generateEstimatedOutcome(subjects, userProfile),
+      personalizedRecommendations: this.generateRecommendations(userProfile, subjects, materialAnalysis),
+      estimatedOutcome: this.generateEstimatedOutcome(subjects, userProfile, materialAnalysis),
       confidence: this.calculateConfidence(userProfile, subjects)
     };
   }
 
-  private identifyAPSubjects(goals: string[]): Array<{ name: string; keywords: string[] }> {
+  private analyzeMaterials(additionalInfo: string): {
+    detectedSubjects: string[];
+    keyTopics: string[];
+    difficultyLevel: string;
+    suggestedDuration: number;
+    specificRequirements: string[];
+    examDates: string[];
+    coursework: string[];
+    weaknessIndicators: string[];
+    strengthIndicators: string[];
+  } | null {
+    if (!additionalInfo || additionalInfo.trim().length < 10) {
+      return null;
+    }
+
+    const text = additionalInfo.toLowerCase();
+    console.log('🔍 Analyzing materials:', text.substring(0, 200) + '...');
+
+    // Detect AP subjects from materials
+    const subjectPatterns = {
+      'AP Calculus AB': ['calculus ab', 'calc ab', 'derivative', 'integral', 'limit', 'continuity', 'ftc'],
+      'AP Calculus BC': ['calculus bc', 'calc bc', 'series', 'parametric', 'polar', 'taylor', 'maclaurin'],
+      'AP Physics 1': ['physics 1', 'mechanics', 'kinematics', 'newton', 'force', 'energy', 'momentum'],
+      'AP Physics 2': ['physics 2', 'electricity', 'magnetism', 'waves', 'optics', 'thermodynamics'],
+      'AP Chemistry': ['chemistry', 'stoichiometry', 'equilibrium', 'kinetics', 'thermochemistry', 'electrochemistry'],
+      'AP Biology': ['biology', 'genetics', 'evolution', 'ecology', 'cellular', 'molecular', 'photosynthesis'],
+      'AP Computer Science A': ['computer science', 'java', 'programming', 'algorithm', 'data structure', 'oop'],
+      'AP Statistics': ['statistics', 'probability', 'hypothesis', 'regression', 'distribution', 'sampling'],
+      'AP English Language': ['english language', 'rhetoric', 'argument', 'synthesis', 'rhetorical analysis'],
+      'AP English Literature': ['english literature', 'poetry', 'prose', 'literary', 'theme', 'symbolism'],
+      'AP US History': ['us history', 'american history', 'apush', 'colonial', 'revolution', 'civil war'],
+      'AP World History': ['world history', 'global', 'civilization', 'trade', 'empire', 'cultural exchange'],
+      'AP Psychology': ['psychology', 'behavior', 'cognition', 'neuroscience', 'development', 'personality'],
+      'AP Economics': ['economics', 'microeconomics', 'macroeconomics', 'supply', 'demand', 'market'],
+      'AP Government': ['government', 'politics', 'constitution', 'federalism', 'civil rights', 'congress']
+    };
+
+    const detectedSubjects: string[] = [];
+    for (const [subject, patterns] of Object.entries(subjectPatterns)) {
+      const matches = patterns.filter(pattern => text.includes(pattern)).length;
+      if (matches >= 2 || (matches >= 1 && patterns.some(p => text.includes(p) && text.indexOf(p) < 100))) {
+        detectedSubjects.push(subject);
+      }
+    }
+
+    // Extract key topics mentioned
+    const topicKeywords = [
+      'chapter', 'unit', 'lesson', 'topic', 'section', 'module',
+      'test', 'quiz', 'exam', 'assignment', 'homework', 'project',
+      'review', 'study', 'practice', 'problem', 'exercise'
+    ];
+
+    const keyTopics: string[] = [];
+    const sentences = text.split(/[.!?]+/);
+    
+    sentences.forEach(sentence => {
+      if (topicKeywords.some(keyword => sentence.includes(keyword))) {
+        // Extract potential topic names (capitalized words or phrases)
+        const words = sentence.split(/\s+/);
+        for (let i = 0; i < words.length - 1; i++) {
+          if (words[i].length > 3 && words[i+1].length > 3) {
+            const phrase = `${words[i]} ${words[i+1]}`.replace(/[^\w\s]/g, '').trim();
+            if (phrase.length > 6 && !keyTopics.includes(phrase)) {
+              keyTopics.push(phrase);
+            }
+          }
+        }
+      }
+    });
+
+    // Determine difficulty level from materials
+    const difficultyIndicators = {
+      'Beginner': ['introduction', 'basic', 'fundamentals', 'overview', 'getting started'],
+      'Intermediate': ['application', 'practice', 'examples', 'problems', 'exercises'],
+      'Advanced': ['complex', 'challenging', 'advanced', 'difficult', 'comprehensive'],
+      'Expert': ['mastery', 'expert', 'professional', 'research', 'thesis']
+    };
+
+    let difficultyLevel = 'Intermediate';
+    let maxMatches = 0;
+    
+    for (const [level, indicators] of Object.entries(difficultyIndicators)) {
+      const matches = indicators.filter(indicator => text.includes(indicator)).length;
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        difficultyLevel = level;
+      }
+    }
+
+    // Estimate duration based on content volume and complexity
+    const wordCount = text.split(/\s+/).length;
+    const baseWeeks = Math.ceil(wordCount / 500); // Rough estimate
+    const suggestedDuration = Math.min(120, Math.max(30, baseWeeks * 7));
+
+    // Extract specific requirements
+    const requirementKeywords = ['must', 'required', 'need to', 'have to', 'should', 'important'];
+    const specificRequirements: string[] = [];
+    
+    sentences.forEach(sentence => {
+      if (requirementKeywords.some(keyword => sentence.includes(keyword))) {
+        const cleaned = sentence.trim().replace(/[^\w\s.,]/g, '');
+        if (cleaned.length > 10 && cleaned.length < 200) {
+          specificRequirements.push(cleaned);
+        }
+      }
+    });
+
+    // Look for exam dates
+    const datePattern = /\b(?:january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}\/\d{1,2}\/\d{2,4}|\d{1,2}-\d{1,2}-\d{2,4})\b/gi;
+    const examDates = text.match(datePattern) || [];
+
+    // Identify coursework types
+    const courseworkKeywords = ['essay', 'report', 'presentation', 'lab', 'experiment', 'project', 'research'];
+    const coursework = courseworkKeywords.filter(keyword => text.includes(keyword));
+
+    // Identify weakness and strength indicators
+    const weaknessKeywords = ['struggle', 'difficult', 'hard', 'confusing', 'weak', 'need help', 'don\'t understand'];
+    const strengthKeywords = ['good at', 'strong', 'understand', 'easy', 'confident', 'excel'];
+    
+    const weaknessIndicators = weaknessKeywords.filter(keyword => text.includes(keyword));
+    const strengthIndicators = strengthKeywords.filter(keyword => text.includes(keyword));
+
+    const analysis = {
+      detectedSubjects: detectedSubjects.slice(0, 4), // Limit to 4 subjects
+      keyTopics: keyTopics.slice(0, 10), // Limit to 10 topics
+      difficultyLevel,
+      suggestedDuration,
+      specificRequirements: specificRequirements.slice(0, 5),
+      examDates: [...new Set(examDates)].slice(0, 3),
+      coursework: [...new Set(coursework)],
+      weaknessIndicators,
+      strengthIndicators
+    };
+
+    console.log('📊 Material analysis results:', analysis);
+    return analysis;
+  }
+  private identifyAPSubjects(goals: string[], materialAnalysis?: any): Array<{ name: string; keywords: string[] }> {
+    // First, use subjects detected from materials if available
+    if (materialAnalysis?.detectedSubjects && materialAnalysis.detectedSubjects.length > 0) {
+      console.log('📚 Using subjects detected from materials:', materialAnalysis.detectedSubjects);
+      return materialAnalysis.detectedSubjects.map((subject: string) => ({
+        name: subject,
+        keywords: [subject.toLowerCase()]
+      }));
+    }
+
     const apSubjectMap = {
       'AP Calculus AB': ['calculus ab', 'calc ab', 'derivatives', 'integrals', 'limits'],
       'AP Calculus BC': ['calculus bc', 'calc bc', 'series', 'parametric', 'polar'],
@@ -274,7 +424,7 @@ class AIEngine {
     return 'medium';
   }
 
-  private generateTopicsForSubject(subjectName: string, learningStyle: string): Array<{
+  private generateTopicsForSubject(subjectName: string, learningStyle: string, materialAnalysis?: any): Array<{
     name: string;
     difficulty: string;
     estimatedTime: number;
@@ -283,6 +433,28 @@ class AIEngine {
     resources: string[];
     assessments: string[];
   }> {
+    // Use topics from material analysis if available
+    if (materialAnalysis?.keyTopics && materialAnalysis.keyTopics.length > 0) {
+      console.log('📝 Using topics from materials:', materialAnalysis.keyTopics);
+      return materialAnalysis.keyTopics.slice(0, 6).map((topic: string, index: number) => ({
+        name: topic,
+        difficulty: materialAnalysis.difficultyLevel || 'Intermediate',
+        estimatedTime: 45 + (index * 5), // Vary time slightly
+        prerequisites: index === 0 ? [] : [`Previous ${subjectName} topics`],
+        learningObjectives: [
+          `Master ${topic} concepts from your materials`,
+          `Apply ${topic} to AP exam contexts`,
+          `Connect ${topic} to broader ${subjectName} themes`
+        ],
+        resources: this.generateResourcesForLearningStyle(learningStyle, topic),
+        assessments: [
+          'Material-based practice problems',
+          `${topic} concept quiz`,
+          'AP-style application questions'
+        ]
+      }));
+    }
+
     const topicTemplates = {
       'AP Calculus AB': [
         { name: 'Limits and Continuity', difficulty: 'Intermediate', time: 45 },
@@ -348,8 +520,12 @@ class AIEngine {
     }
   }
 
-  private generateReasoning(subjectName: string, userProfile: UserProfile): string {
+  private generateReasoning(subjectName: string, userProfile: UserProfile, materialAnalysis?: any): string {
     const reasons = [];
+    
+    if (materialAnalysis?.detectedSubjects.includes(subjectName)) {
+      reasons.push('identified from your uploaded materials and course requirements');
+    }
     
     if (userProfile.weakAreas.some(area => subjectName.toLowerCase().includes(area.toLowerCase()))) {
       reasons.push('identified as a weak area requiring focused attention');
@@ -359,12 +535,16 @@ class AIEngine {
       reasons.push('directly aligns with your stated learning goals');
     }
     
+    if (materialAnalysis?.specificRequirements.length > 0) {
+      reasons.push('addresses specific requirements from your course materials');
+    }
+    
     reasons.push('essential for comprehensive AP exam preparation');
     
     return `This subject is included because it ${reasons.join(' and ')}.`;
   }
 
-  private generateMilestones(subjects: any[], timeAvailable: number): Array<{
+  private generateMilestones(subjects: any[], timeAvailable: number, materialAnalysis?: any): Array<{
     week: number;
     title: string;
     description: string;
@@ -378,15 +558,29 @@ class AIEngine {
       milestones.push({
         week,
         title: `${subject.name} Foundation`,
-        description: `Complete foundational topics in ${subject.name} and demonstrate understanding through practice problems.`,
+        description: `Complete foundational topics in ${subject.name} and demonstrate understanding through practice problems.${materialAnalysis ? ' Focus on concepts from your uploaded materials.' : ''}`,
         successCriteria: [
           `Complete all ${subject.name} foundational topics`,
           `Score 70%+ on ${subject.name} practice quiz`,
-          `Identify and address knowledge gaps`
+          `Identify and address knowledge gaps`,
+          ...(materialAnalysis?.specificRequirements.slice(0, 1) || [])
         ]
       });
     });
 
+    // Add material-specific milestones if exam dates are provided
+    if (materialAnalysis?.examDates.length > 0) {
+      milestones.push({
+        week: Math.max(2, milestones.length),
+        title: 'Exam Preparation Checkpoint',
+        description: `Prepare for upcoming exams based on your course schedule: ${materialAnalysis.examDates.join(', ')}.`,
+        successCriteria: [
+          'Complete practice exams for scheduled tests',
+          'Review all material-specific topics',
+          'Address identified weak areas from materials'
+        ]
+      });
+    }
     // Add final milestone
     milestones.push({
       week: Math.max(4, milestones.length + 1),
@@ -395,7 +589,8 @@ class AIEngine {
       successCriteria: [
         'Complete full-length AP practice exams',
         'Achieve target scores on all practice exams',
-        'Review and reinforce weak areas identified'
+        'Review and reinforce weak areas identified',
+        ...(materialAnalysis?.coursework.length > 0 ? [`Complete required coursework: ${materialAnalysis.coursework.join(', ')}`] : [])
       ]
     });
 
@@ -412,9 +607,28 @@ class AIEngine {
     return difficultyMap[preferredDifficulty as keyof typeof difficultyMap] || 'AP Balanced';
   }
 
-  private generateRecommendations(userProfile: UserProfile, subjects: any[]): string[] {
+  private generateRecommendations(userProfile: UserProfile, subjects: any[], materialAnalysis?: any): string[] {
     const recommendations = [];
     
+    // Material-specific recommendations
+    if (materialAnalysis) {
+      if (materialAnalysis.weaknessIndicators.length > 0) {
+        recommendations.push(`Focus extra time on areas you mentioned struggling with: ${materialAnalysis.weaknessIndicators.slice(0, 2).join(', ')}`);
+      }
+      
+      if (materialAnalysis.strengthIndicators.length > 0) {
+        recommendations.push(`Leverage your strengths in: ${materialAnalysis.strengthIndicators.slice(0, 2).join(', ')}`);
+      }
+      
+      if (materialAnalysis.coursework.length > 0) {
+        recommendations.push(`Integrate study sessions with your coursework: ${materialAnalysis.coursework.join(', ')}`);
+      }
+      
+      if (materialAnalysis.examDates.length > 0) {
+        recommendations.push(`Plan intensive review sessions before exam dates: ${materialAnalysis.examDates.join(', ')}`);
+      }
+    }
+
     // Learning style recommendations
     switch (userProfile.learningStyle) {
       case 'visual':
@@ -453,16 +667,24 @@ class AIEngine {
     return recommendations;
   }
 
-  private generateEstimatedOutcome(subjects: any[], userProfile: UserProfile): string {
+  private generateEstimatedOutcome(subjects: any[], userProfile: UserProfile, materialAnalysis?: any): string {
     const subjectCount = subjects.length;
     const timeCommitment = userProfile.timeAvailable;
     
     let outcome = `After completing this study plan, you should be well-prepared for ${subjectCount} AP exam${subjectCount > 1 ? 's' : ''}. `;
     
+    if (materialAnalysis?.examDates.length > 0) {
+      outcome += `Your study plan is aligned with your exam schedule (${materialAnalysis.examDates.join(', ')}). `;
+    }
+    
     if (timeCommitment >= 60) {
       outcome += 'With your dedicated study schedule, you\'re positioned to achieve scores of 4-5 on your AP exams.';
     } else {
       outcome += 'With consistent effort, you should achieve solid scores of 3-4 on your AP exams.';
+    }
+    
+    if (materialAnalysis?.specificRequirements.length > 0) {
+      outcome += ' The plan addresses your specific course requirements and should help you excel in your coursework as well.';
     }
     
     return outcome;
