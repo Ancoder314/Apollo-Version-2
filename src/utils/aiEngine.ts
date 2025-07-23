@@ -411,6 +411,167 @@ class AIEngine {
     console.log('📊 Material analysis results:', analysis);
     return analysis;
   }
+
+  private extractQuestionsFromText(text: string): Array<{
+    question: string;
+    context: string;
+    type: 'multiple_choice' | 'short_answer' | 'essay';
+    difficulty: string;
+    pageReference?: string;
+  }> {
+    const questions: Array<{
+      question: string;
+      context: string;
+      type: 'multiple_choice' | 'short_answer' | 'essay';
+      difficulty: string;
+      pageReference?: string;
+    }> = [];
+
+    // Question patterns to look for
+    const questionPatterns = [
+      /(?:^|\n)\s*\d+[\.\)]\s*(.+?\?)/gm, // Numbered questions ending with ?
+      /(?:^|\n)\s*[A-Z]\.\s*(.+?\?)/gm,   // Letter questions ending with ?
+      /(?:^|\n)\s*Question\s*\d*:?\s*(.+?\?)/gim, // "Question:" format
+      /(?:^|\n)\s*Q\d*[\.\)]\s*(.+?\?)/gim, // Q1. format
+      /(?:^|\n)\s*(.+?\?\s*(?:\n|$))/gm    // Any line ending with ?
+    ];
+
+    const sentences = text.split(/[.!?]+/);
+    let pageRef = '';
+    
+    // Look for page references
+    const pagePattern = /page\s+(\d+)|p\.\s*(\d+)|chapter\s+(\d+)/gi;
+    const pageMatch = text.match(pagePattern);
+    if (pageMatch) {
+      pageRef = pageMatch[0];
+    }
+
+    questionPatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(text)) !== null && questions.length < 10) {
+        const questionText = match[1]?.trim();
+        if (questionText && questionText.length > 10 && questionText.length < 300) {
+          // Get surrounding context
+          const matchIndex = match.index;
+          const contextStart = Math.max(0, matchIndex - 100);
+          const contextEnd = Math.min(text.length, matchIndex + match[0].length + 100);
+          const context = text.substring(contextStart, contextEnd).trim();
+
+          // Determine question type
+          let type: 'multiple_choice' | 'short_answer' | 'essay' = 'short_answer';
+          if (context.includes('A)') || context.includes('a)') || context.includes('(A)')) {
+            type = 'multiple_choice';
+          } else if (questionText.toLowerCase().includes('explain') || 
+                     questionText.toLowerCase().includes('discuss') ||
+                     questionText.toLowerCase().includes('analyze')) {
+            type = 'essay';
+          }
+
+          // Determine difficulty
+          let difficulty = 'Intermediate';
+          if (questionText.toLowerCase().includes('basic') || 
+              questionText.toLowerCase().includes('simple')) {
+            difficulty = 'Beginner';
+          } else if (questionText.toLowerCase().includes('complex') || 
+                     questionText.toLowerCase().includes('advanced') ||
+                     questionText.toLowerCase().includes('analyze')) {
+            difficulty = 'Advanced';
+          }
+
+          questions.push({
+            question: questionText,
+            context: context,
+            type: type,
+            difficulty: difficulty,
+            pageReference: pageRef || undefined
+          });
+        }
+      }
+    });
+
+    return questions;
+  }
+
+  private extractChapterStructure(text: string): Array<{
+    chapter: string;
+    topics: string[];
+    pageRange?: string;
+  }> {
+    const chapters: Array<{
+      chapter: string;
+      topics: string[];
+      pageRange?: string;
+    }> = [];
+
+    // Chapter patterns
+    const chapterPatterns = [
+      /(?:^|\n)\s*(?:chapter|unit|section)\s+(\d+)[\:\.\s]*(.+?)(?=\n|$)/gim,
+      /(?:^|\n)\s*(\d+)[\.\)]\s*(.+?)(?=\n|$)/gm,
+      /(?:^|\n)\s*([A-Z][^.!?]*(?:chapter|unit|section)[^.!?]*)(?=\n|$)/gim
+    ];
+
+    const lines = text.split('\n');
+    let currentChapter = '';
+    let currentTopics: string[] = [];
+
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      
+      // Check if this line looks like a chapter heading
+      const isChapterHeading = chapterPatterns.some(pattern => {
+        pattern.lastIndex = 0; // Reset regex
+        return pattern.test(trimmedLine);
+      });
+
+      if (isChapterHeading && trimmedLine.length > 5 && trimmedLine.length < 100) {
+        // Save previous chapter if exists
+        if (currentChapter && currentTopics.length > 0) {
+          chapters.push({
+            chapter: currentChapter,
+            topics: [...currentTopics],
+            pageRange: undefined
+          });
+        }
+
+        // Start new chapter
+        currentChapter = trimmedLine;
+        currentTopics = [];
+      } else if (currentChapter && trimmedLine.length > 3 && trimmedLine.length < 80) {
+        // This might be a topic under the current chapter
+        if (!trimmedLine.toLowerCase().includes('page') && 
+            !trimmedLine.match(/^\d+$/) &&
+            trimmedLine.split(' ').length > 1 &&
+            trimmedLine.split(' ').length < 10) {
+          currentTopics.push(trimmedLine);
+        }
+      }
+    });
+
+    // Add the last chapter
+    if (currentChapter && currentTopics.length > 0) {
+      chapters.push({
+        chapter: currentChapter,
+        topics: [...currentTopics],
+        pageRange: undefined
+      });
+    }
+
+    // If no clear structure found, create a basic one
+    if (chapters.length === 0) {
+      const words = text.split(/\s+/);
+      const wordCount = words.length;
+      
+      if (wordCount > 100) {
+        chapters.push({
+          chapter: 'Main Content',
+          topics: ['Key Concepts', 'Important Terms', 'Practice Problems'],
+          pageRange: undefined
+        });
+      }
+    }
+
+    return chapters.slice(0, 8); // Limit to 8 chapters max
+  }
   private identifyAPSubjects(goals: string[], materialAnalysis?: any): Array<{ name: string; keywords: string[] }> {
     // First, use subjects detected from materials if available
     if (materialAnalysis?.detectedSubjects && materialAnalysis.detectedSubjects.length > 0) {
